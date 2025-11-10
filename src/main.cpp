@@ -1,5 +1,4 @@
 #include "WifiManager.h"
-#include "HardwareSerial.h"
 #include "nvs_flash.h"
 #include "led.h"
 #include "rotary_coder.h"
@@ -7,7 +6,6 @@
 #include "tags.h"
 #include "timeout.h"
 #include "WebServer.h"
-#include "event.h"
 #include "event_list.h"
 #include "time.h"
 #include "esp_sntp.h"
