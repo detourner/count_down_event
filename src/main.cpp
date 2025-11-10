@@ -55,6 +55,8 @@ void displayDaysRemaining(int32_t days)
         nixies.SetBlink(0, 0); // Disable blinking for normal display
     }
     
+    Serial.print("Displaying days remaining: ");
+    Serial.println(days);
     nixies.DispValue(days);
     timeOut.newEvent(); // Reset timeout !
 
@@ -147,6 +149,8 @@ void setup()
   // clear the NVS partition (and all preferences stored in it)
   //nvs_flash_erase(); // erase the NVS partition and...
   //nvs_flash_init(); // initialize the NVS partition.
+
+  events.load(); // Load events from NVS
 
   timeOut.Setup(10000, 600000, &timeOutCallback);
 

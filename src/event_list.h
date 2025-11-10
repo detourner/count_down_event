@@ -17,7 +17,7 @@ class EventList
 {
 public:
     // Initialize with optional auto-load from NVS
-    EventList(bool autoLoad = true);
+    EventList();
 
     // Add a new event or update the date if the tag already exists.
     // Returns true on success, false if the list is full.

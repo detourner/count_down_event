@@ -1,17 +1,12 @@
 #include "event_list.h"
 
-EventList::EventList(bool autoLoad)
+EventList::EventList()
 {
     _count = 0;
     for (size_t i = 0; i < EVENTLIST_MAX_EVENTS; ++i)
     {
         _used[i] = false;
         // default-constructed Event is fine
-    }
-
-    if (autoLoad) 
-    {
-        load();
     }
 }
 
@@ -197,6 +192,10 @@ bool EventList::load()
         {
             _events[i] = evt;
             _used[i] = true;
+        }
+        else 
+        {
+            _used[i] = false;
         }
     }
 
