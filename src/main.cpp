@@ -5,6 +5,7 @@
 #include "rotary_coder.h"
 #include "nixies_drv.h"
 #include "tags.h"
+#include "timeout.h"
 #include "WebServer.h"
 #include "event.h"
 #include "event_list.h"
@@ -24,18 +25,18 @@ WifiManager wifiManager(apSSID, apPassword);
 #define PinRot2_1  35
 #define PinRot2_2  34
 
-String inputString = "";
-bool stringComplete = false;
-
 Led wink_led;
 rotaryCoder Rot1;
 rotaryCoder Rot2;
 
 NixiesDriver nixies;
+TimeOut timeOut;
 
 tags tag;
 WebServer webServer;
 EventList events;  // Will auto-load from NVS
+
+unsigned long startTimeDisplay = 0;
 
 // Function to display days remaining on nixies with limits (0-999)
 void displayDaysRemaining(int32_t days)
@@ -57,6 +58,8 @@ void displayDaysRemaining(int32_t days)
     }
     
     nixies.DispValue(days);
+    timeOut.newEvent(); // Reset timeout !
+
 }
 
 // Function to update LED winks based on active alarms
@@ -69,13 +72,32 @@ void updateActiveAlarmsWinks()
     wink_led.setWinks(totalActiveAlarms);
 }
 
+void timeOutCallback(uint32_t dispValue)
+{
+    if(dispValue == 0)
+    {
+        nixies.SetBlink(1000,0); // off !
+    }
+    else if(dispValue == timeOut.Infinity())
+    {
+        nixies.SetBlink(250,0); // blink fast !
+        nixies.DispValue(999);
+    }
+    else
+    {
+        nixies.SetBlink(500,50); // blink low !
+        nixies.DispValue(dispValue);
+    }
+}
+
 void tagCallback(uint32_t tag_id)
 {
+  timeOut.newEvent(); // Reset timeout !
+
   // If tag_id is 0, no tag is present (just removed)
   if (tag_id == 0)
   {
       Serial.println("Tag removed");
-      updateActiveAlarmsWinks();  // Update winks when tag is removed
       return;
   }
 
@@ -127,19 +149,30 @@ void setup()
   // clear the NVS partition (and all preferences stored in it)
   //nvs_flash_erase(); // erase the NVS partition and...
   //nvs_flash_init(); // initialize the NVS partition.
+
+  timeOut.Setup(10000, 600000, &timeOutCallback);
+
+
+  // Rotary Encoder for Display Duration. Define limits and initial value.
+  // The duration is in seconds.
+  Rot1.init(PinRot1_1,PinRot1_2);
+  
+  Rot1.setMin(timeOut.getPosMin());
+  Rot1.setMax(timeOut.getPosMax());
+  Rot1.setVal(timeOut.getPosDef());
+
+
+
     
   wink_led.Setup(PinWinkLed);
   wink_led.setWinks( 0 );
 
-  Rot1.init(PinRot1_1,PinRot1_2);
-  Rot1.setMax(100);
-  Rot1.setVal(50);
-  Rot1.setMin(10);
+  
 
   Rot2.init(PinRot2_1,PinRot2_2);
-  Rot2.setMax(200);
-  Rot2.setVal(100);
-  Rot2.setMin(20);
+  Rot2.setMin(timeOut.getPosMin());
+  Rot2.setMax(timeOut.getPosMax());
+  Rot2.setVal(timeOut.getPosDef());
 
   nixies.Setup();
   nixies.SetBrightness(200);
@@ -183,7 +216,7 @@ bool isTimeSynchronized()
     struct tm timeinfo;
     if(!getLocalTime(&timeinfo))
     {
-        return false;
+      return false;
     }
     return timeinfo.tm_year > (2023 - 1900);
 }
@@ -195,7 +228,7 @@ void loop()
   static unsigned long lastNTPRetry = 0;
   static unsigned long lastAlarmCheck = 0;
   static int rot1Prev = 0;
-  static int rot2Prev = 0;
+  
 
   // Non-blocking NTP sync check
   unsigned long currentMillis = millis();
@@ -245,25 +278,27 @@ void loop()
     {
       Serial.println("-");
     }
-    wink_led.setWinks(3);   
+  }
+
+  if(timeOut.getDispStatus())
+  {
+    nixies.SetBrightness(Rot1.getVal()*50);
+  }
+  else
+  {
+    nixies.SetBrightness(0); // off !
   }
 
   wink_led.CyclTask();
   nixies.CyclTask();
   tag.CyclTask();
 
+  timeOut.CyclTask(Rot2.getVal());
+
   if(Rot1.getVal() != rot1Prev)
   {
-      rot1Prev = Rot1.getVal();
-      Serial.print("Rotary1:");
-      Serial.println(rot1Prev);
-  }
-
-  if(Rot2.getVal() != rot2Prev)
-  {
-      rot2Prev = Rot2.getVal();
-      Serial.print("Rotary2:");
-      Serial.println(rot2Prev);
+        timeOut.newEvent();
+        rot1Prev = Rot1.getVal();
   }
 
 }

@@ -11,26 +11,36 @@ NixiesDriver::NixiesDriver(void)
 
 void NixiesDriver::Setup()
 {
-    // Set all nixies output !
-    pinMode( NIXIES_DRV_POL,   OUTPUT);
-    pinMode( NIXIES_DRV_BL,    OUTPUT);
-    pinMode( NIXIES_DRV_LE,    OUTPUT);
-    pinMode( NIXIES_DRV_DATA,  OUTPUT);
-    pinMode( NIXIES_DRV_CLK,   OUTPUT);
+    Setup( NIXIES_DRV_DATA, NIXIES_DRV_CLK, NIXIES_DRV_LE, NIXIES_DRV_BL, NIXIES_DRV_POL );
+}
 
+void NixiesDriver::Setup( int pinData, int pinClk, int pinLe, int pinBl, int pinPol )
+{
+    _pinData = pinData;
+    _pinClk  = pinClk;
+    _pinLe   = pinLe;
+    _pinBl   = pinBl;
+    _pinPol  = pinPol;
 
-    digitalWrite( NIXIES_DRV_POL,   LOW);
-    digitalWrite( NIXIES_DRV_BL,    HIGH);
-    digitalWrite( NIXIES_DRV_LE,    LOW);
-    digitalWrite( NIXIES_DRV_DATA,  LOW);
-    digitalWrite( NIXIES_DRV_CLK,   LOW);
+    pinMode( _pinPol,   OUTPUT);
+    pinMode( _pinBl,    OUTPUT);
+    pinMode( _pinLe,    OUTPUT);
+    pinMode( _pinData,  OUTPUT);
+    pinMode( _pinClk,   OUTPUT);
+
+    digitalWrite( _pinPol,   LOW);
+    digitalWrite( _pinBl,    HIGH);
+    digitalWrite( _pinLe,    LOW);
+    digitalWrite( _pinData,  LOW);
+    digitalWrite( _pinClk,   LOW);   
+   
 
 
     // Configurer le canal PWM
     ledcSetup(NIXIES_PWM_CHANNEL, NIXIES_PWM_FREQUENCY, NIXIES_PWM_RESOLUTION);
   
     // Attacher le GPIO au canal PWM
-    ledcAttachPin(NIXIES_DRV_BL, NIXIES_PWM_CHANNEL);
+    ledcAttachPin(_pinBl, NIXIES_PWM_CHANNEL);
 
     // write inverted value: 0 => max, max => 0
     ledcWrite(NIXIES_PWM_CHANNEL, GetMaxBrightness()); // set off (inverted)
@@ -131,23 +141,23 @@ void NixiesDriver::LoadShiftRegister(const uint32_t value)
     // This method used a simple shift register...
     uint32_t val = value;
 
-    digitalWrite( NIXIES_DRV_LE,   HIGH);
+    digitalWrite( _pinLe,   HIGH);
     // for each of 32 bits...
     for(uint8_t i=0; i<32; i++)
     {
-        digitalWrite( NIXIES_DRV_CLK,   LOW);
+        digitalWrite( _pinClk,   LOW);
         if( val & ((uint32_t)0x80000000) )
-            digitalWrite( NIXIES_DRV_DATA,   LOW);
+            digitalWrite( _pinData,   LOW);
         else
-            digitalWrite( NIXIES_DRV_DATA,   HIGH);
+            digitalWrite( _pinData,   HIGH);
         val <<= 1;
         delayMicroseconds(20); // Slowly, ULN2803A switch in 1us !
-        digitalWrite( NIXIES_DRV_CLK,   HIGH);
+        digitalWrite( _pinClk,   HIGH);
         delayMicroseconds(30);
     }
     delayMicroseconds(30);
     // Load latches !
-    digitalWrite( NIXIES_DRV_LE,   LOW);
+    digitalWrite( _pinLe,   LOW);
     delayMicroseconds(30);
-    digitalWrite( NIXIES_DRV_LE,   HIGH);
+    digitalWrite( _pinLe,   HIGH);
 }

@@ -3,7 +3,7 @@
 
 #include <Arduino.h>
 
-// NIXIES pinout
+// defaut NIXIES pinout
 #define NIXIES_DRV_POL      13
 #define NIXIES_DRV_BL       26
 #define NIXIES_DRV_LE       12
@@ -21,7 +21,9 @@ class NixiesDriver
       NixiesDriver(void);
 
       // Must be call in setup() function in main file
-      void      Setup();
+      void     Setup();
+
+      void     Setup( int pinData, int pinClk, int pinLe, int pinBl, int pinPol ); 
 
       // Must be call in loop() function in main file as soon
       // as possible.
@@ -62,6 +64,11 @@ class NixiesDriver
       uint32_t      _periodeMsprev = 0;
       uint32_t      _dutyCycleprev = 0;
 
+      int          _pinData;
+      int          _pinClk;
+      int          _pinLe;
+      int          _pinBl;
+      int          _pinPol;
 
       void      LoadShiftRegister(uint32_t value);
 
