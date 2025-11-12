@@ -1,17 +1,27 @@
 #include "event.h"
 
 Event::Event()
-  : _tagId(0), _day(0), _month(0), _year(0)
+    : _tagId(0), _day(0), _month(0), _year(0), _status(EVENT_STATUS_NO_CONFIGURED)
 {
-    for (size_t i = 0; i < MAX_ALARMS; ++i)
-    {
-        _alarmDays[i] = -1;
-        _alarmAck[i] = false;
-    }
+    initAlarms();
+}
+
+Event::Event(uint32_t tagId)
+    : _tagId(tagId), _day(0), _month(0), _year(0), _status(EVENT_STATUS_NO_CONFIGURED)
+{
+    initAlarms();
 }
 
 Event::Event(uint32_t tagId, uint8_t day, uint8_t month, uint16_t year)
-  : _tagId(tagId), _day(day), _month(month), _year(year)
+    : _tagId(tagId), _day(day), _month(month), _year(year), _status(EVENT_STATUS_NO_CONFIGURED)
+{
+    initAlarms();
+    // compute status based on provided date
+    updateStatus();
+}
+
+// Common initialization used by constructors
+void Event::initAlarms()
 {
     for (size_t i = 0; i < MAX_ALARMS; ++i)
     {
@@ -31,6 +41,8 @@ void Event::setDate(uint8_t day, uint8_t month, uint16_t year)
     _day = day;
     _month = month;
     _year = year;
+    // Recompute status whenever date is changed
+    updateStatus();
 }
 
 static String pad2(uint8_t v)
@@ -66,6 +78,9 @@ String Event::toString() const
     }
     s += ";";
     s += String((unsigned int)ackMask);
+    // append status value for persistence
+    s += ";";
+    s += String((unsigned int)_status);
     return s;
 }
 
@@ -95,14 +110,16 @@ bool Event::fromString(const String &s, Event &out)
 
     out = Event((uint32_t)id, (uint8_t)day, (uint8_t)month, (uint16_t)year);
     // Parse optional alarms part: expected format after date: ;d1,d2,d3;ackMask
-    int pos = s.indexOf(';', sep + 1);
-    if (pos >= 0)
+    int posA = s.indexOf(';', sep + 1);
+    if (posA >= 0)
     {
-        String alarmsPart = s.substring(pos + 1);
-        // split by ';' to get alarms and ackmask
-        int semi = alarmsPart.indexOf(';');
-        String alarmsList = (semi >= 0) ? alarmsPart.substring(0, semi) : alarmsPart;
-        String ackStr = (semi >= 0) ? alarmsPart.substring(semi + 1) : "0";
+        int posB = s.indexOf(';', posA + 1);
+        int posC = s.indexOf(';', posB + 1);
+
+        String alarmsList = (posB >= 0) ? s.substring(posA + 1, posB) : String();
+        String ackStr = (posB >= 0 && posC < 0) ? s.substring(posB + 1) : String();
+        if (posB >= 0 && posC > posB) ackStr = s.substring(posB + 1, posC);
+        String statusStr = (posC >= 0) ? s.substring(posC + 1) : String();
 
         // initialize alarms
         for (size_t i = 0; i < Event::MAX_ALARMS; ++i)
@@ -136,10 +153,23 @@ bool Event::fromString(const String &s, Event &out)
         }
 
         // parse ack mask
-        unsigned int ackMask = (unsigned int)ackStr.toInt();
+        unsigned int ackMask = 0;
+        if (ackStr.length() > 0) ackMask = (unsigned int)ackStr.toInt();
         for (size_t i = 0; i < Event::MAX_ALARMS; ++i)
         {
             out._alarmAck[i] = (ackMask & (1u << i)) != 0;
+        }
+
+        // parse optional status
+        if (statusStr.length() > 0)
+        {
+            unsigned int st = (unsigned int)statusStr.toInt();
+            out._status = (eventStatus_t)st;
+        }
+        else
+        {
+            // compute status from the date
+            out.updateStatus();
         }
     }
 
@@ -215,6 +245,38 @@ void Event::autoAcknowledgeIfEventPassed()
     }
 }
 
+Event::eventStatus_t Event::getStatus() const
+{
+    return _status;
+}
+
+void Event::setStatus(Event::eventStatus_t st)
+{
+    _status = st;
+}
+
+void Event::updateStatus()
+{
+    // If no valid date configured
+    if (_day == 0 || _month == 0 || _year == 0)
+    {
+        _status = Event::EVENT_STATUS_NO_CONFIGURED;
+        return;
+    }
+
+    int32_t daysLeft = getDaysRemaining();
+    if (daysLeft <= 0)
+    {
+        _status = Event::EVENT_STATUS_END;
+        // mark alarms acknowledged when event passed
+        for (size_t i = 0; i < MAX_ALARMS; ++i) _alarmAck[i] = true;
+    }
+    else
+    {
+        _status = Event::EVENT_STATUS_IN_PROGRESS;
+    }
+}
+
 bool Event::setAlarm(size_t index, int16_t daysBefore)
 {
     if (index >= MAX_ALARMS) return false;
@@ -260,3 +322,5 @@ bool Event::isAlarmAcknowledged(size_t index) const
     if (index >= MAX_ALARMS) return true;
     return _alarmAck[index];
 }
+
+// New status field default handling: if date not set -> NO_CONFIGURED

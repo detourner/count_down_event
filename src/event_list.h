@@ -19,9 +19,18 @@ public:
     // Initialize with optional auto-load from NVS
     EventList();
 
+
+    // Add a new event with only tag id; date is unset (0/0/0).
+    // Returns true on success, false if the list is full.
+    bool addOrUpdate(uint32_t tagId);
+
     // Add a new event or update the date if the tag already exists.
     // Returns true on success, false if the list is full.
     bool addOrUpdate(uint32_t tagId, uint8_t day, uint8_t month, uint16_t year);
+
+    // Add or update an event; if hasDate is false, date is unset (0/0/0).
+    // Returns true on success, false if the list is full.
+    bool addOrUpdate(uint32_t tagId, bool hasDate, uint8_t day, uint8_t month, uint16_t year);
 
     // Remove an event by tag id. Returns true if found and removed.
     bool remove(uint32_t tagId);

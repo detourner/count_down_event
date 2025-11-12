@@ -22,22 +22,31 @@ int EventList::findIndex(uint32_t tagId) const
     return -1;
 }
 
-bool EventList::addOrUpdate(uint32_t tagId, uint8_t day, uint8_t month, uint16_t year)
+bool EventList::addOrUpdate(uint32_t tagId, bool hasDate, uint8_t day, uint8_t month, uint16_t year)
 {
     int idx = findIndex(tagId);
-    if (idx >= 0) 
+
+    if (idx >= 0)
     {
-        _events[idx].setDate(day, month, year);
+        // Already exists
+        if (hasDate)
+        {
+            _events[idx].setDate(day, month, year);
+        }        
         saveEvent(_events[idx], idx);
         return true; // updated
     }
 
-    // find free slot
+    // Find a free slot
     for (int i = 0; i < (int)EVENTLIST_MAX_EVENTS; ++i)
     {
-        if (!_used[i]) 
+        if (!_used[i])
         {
-            _events[i] = Event(tagId, day, month, year);
+            if (hasDate)
+                _events[i] = Event(tagId, day, month, year);
+            else
+                _events[i] = Event(tagId);
+
             _used[i] = true;
             ++_count;
             saveEvent(_events[i], i);
@@ -45,8 +54,19 @@ bool EventList::addOrUpdate(uint32_t tagId, uint8_t day, uint8_t month, uint16_t
         }
     }
 
-    return false; // no space
+    return false; // list full
 }
+
+bool EventList::addOrUpdate(uint32_t tagId)
+{
+    return addOrUpdate(tagId, false, 0, 0, 0);
+}
+
+bool EventList::addOrUpdate(uint32_t tagId, uint8_t day, uint8_t month, uint16_t year)
+{
+    return addOrUpdate(tagId, true, day, month, year);
+}
+
 
 bool EventList::remove(uint32_t tagId)
 {
@@ -92,6 +112,9 @@ bool EventList::getEvent(uint32_t tagId, Event &out)
     {
         if (_events[idx].isAlarmAcknowledged(i)) beforeMask |= (1u << i);
     }
+    
+    // record previous status
+    Event::eventStatus_t beforeStatus = _events[idx].getStatus();
 
     _events[idx].autoAcknowledgeIfEventPassed();
 
@@ -100,8 +123,13 @@ bool EventList::getEvent(uint32_t tagId, Event &out)
     {
         if (_events[idx].isAlarmAcknowledged(i)) afterMask |= (1u << i);
     }
+    
+    // also update status based on date (may set END and ack alarms)
+    _events[idx].updateStatus();
 
-    if (beforeMask != afterMask)
+    Event::eventStatus_t afterStatus = _events[idx].getStatus();
+
+    if (beforeMask != afterMask || beforeStatus != afterStatus)
     {
         // persist the change
         saveEvent(_events[idx], idx);

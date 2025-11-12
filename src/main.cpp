@@ -36,31 +36,7 @@ EventList events;  // Will auto-load from NVS
 
 unsigned long startTimeDisplay = 0;
 
-// Function to display days remaining on nixies with limits (0-999)
-void displayDaysRemaining(int32_t days)
-{
-    // Limit the display range
-    if (days < 0)
-    {
-        days = 0;
-        nixies.SetBlink(1000, 50); // Blink to indicate event passed
-    }
-    else if (days > 999)
-    {
-        days = 999;
-        nixies.SetBlink(1000, 50); // Blink to indicate event is more than displayable
-    }
-    else
-    {
-        nixies.SetBlink(0, 0); // Disable blinking for normal display
-    }
-    
-    Serial.print("Displaying days remaining: ");
-    Serial.println(days);
-    nixies.DispValue(days);
-    timeOut.newEvent(); // Reset timeout !
 
-}
 
 // Function to update LED winks based on active alarms
 void updateActiveAlarmsWinks()
@@ -106,38 +82,57 @@ void tagCallback(uint32_t tag_id)
 
   // Try to get existing event
   Event evt;
-  if (events.getEvent(tag_id, evt))
-  {
-      evt.acknowledgeAlarms(); // Acknowledge any due alarms
-      updateActiveAlarmsWinks();  // Update winks when tag is removed
-      // Event exists, display days remaining
-      int32_t daysLeft = evt.getDaysRemaining();
-      Serial.print("Days remaining: ");
-      Serial.println(daysLeft);
-      displayDaysRemaining(daysLeft);
-  }
-  else
-  {
-    // New tag, create event for today + 1 year
-    time_t now;
-    struct tm timeinfo;
-    time(&now);
-    localtime_r(&now, &timeinfo);
 
-    // Set event one year from today
-    if (events.addOrUpdate(tag_id, 
-                          timeinfo.tm_mday,
-                          timeinfo.tm_mon + 1,
-                          timeinfo.tm_year + 1900 + 1))
+  // If not found, create a new event
+  if(events.getEvent(tag_id, evt) == false)
+  {
+    Serial.println("Event not found, will create a new one.");
+    // Proceed to create a new event below 
+    if (events.addOrUpdate(tag_id))
     {
-      Serial.println("New event created (1 year from today)");
-      displayDaysRemaining(365);  // Approximate for display
+      Serial.println("New event created");
     }
     else
     {
       Serial.println("Error: Could not create event (storage full)");
-      nixies.DispValue(0);  // Error indication
     }
+  }
+
+  if (events.getEvent(tag_id, evt))
+  {
+    evt.acknowledgeAlarms(); // Acknowledge any due alarms
+    updateActiveAlarmsWinks();  // Update winks when tag is removed
+    timeOut.newEvent(); // Reset timeout !
+
+    // Event exists, display days remaining
+    int32_t daysLeft = evt.getDaysRemaining();
+    Serial.print("Days remaining: ");
+    Serial.println(daysLeft);
+    switch(evt.getStatus())
+    {
+      case Event::EVENT_STATUS_NO_CONFIGURED:
+        Serial.println("Event status: NO_CONFIGURED");
+        nixies.DispValue(999);
+        nixies.SetBlink(1000,50);
+        break;
+      case Event::EVENT_STATUS_IN_PROGRESS:
+        Serial.println("Event status: IN_PROGRESS");
+        nixies.DispValue(daysLeft);
+        nixies.SetBlink(0,0); // no blink
+        break;
+      case Event::EVENT_STATUS_END:
+        Serial.println("Event status: END");
+        nixies.DispValue(0);
+        nixies.SetBlink(1000,50);
+        break;
+      default:
+        Serial.println("Event status: UNKNOWN");
+        break;
+    }
+  }
+  else
+  {
+    Serial.println("Error retrieving or creating event.");
   }
 }
 
@@ -159,11 +154,14 @@ void setup()
   // The duration is in seconds.
   Rot1.init(PinRot1_1,PinRot1_2);
   
-  Rot1.setMin(timeOut.getPosMin());
-  Rot1.setMax(timeOut.getPosMax());
-  Rot1.setVal(timeOut.getPosDef());
+  Rot1.setMin(10);
+  Rot1.setMax(nixies.GetBrightness()/50);
+  Rot1.setVal(nixies.GetBrightness()/50);
 
-
+  Rot2.init(PinRot2_1,PinRot2_2);
+  Rot2.setMin(timeOut.getPosMin());
+  Rot2.setMax(timeOut.getPosMax());
+  Rot2.setVal(timeOut.getPosDef());
 
     
   wink_led.Setup(PinWinkLed);
@@ -171,10 +169,7 @@ void setup()
 
   
 
-  Rot2.init(PinRot2_1,PinRot2_2);
-  Rot2.setMin(timeOut.getPosMin());
-  Rot2.setMax(timeOut.getPosMax());
-  Rot2.setVal(timeOut.getPosDef());
+
 
   nixies.Setup();
   nixies.SetBrightness(200);
@@ -282,6 +277,12 @@ void loop()
     }
   }
 
+  if(Rot1.getVal() != rot1Prev)
+  {
+        timeOut.newEvent();
+        rot1Prev = Rot1.getVal();
+  }
+
   if(timeOut.getDispStatus())
   {
     nixies.SetBrightness(Rot1.getVal()*50);
@@ -297,10 +298,6 @@ void loop()
 
   timeOut.CyclTask(Rot2.getVal());
 
-  if(Rot1.getVal() != rot1Prev)
-  {
-        timeOut.newEvent();
-        rot1Prev = Rot1.getVal();
-  }
+
 
 }
