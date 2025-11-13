@@ -50,6 +50,8 @@ void updateActiveAlarmsWinks()
 
 void timeOutCallback(uint32_t dispValue)
 {
+    Serial.print("Display Value due to timeout: ");
+    Serial.println(dispValue);
     if(dispValue == 0)
     {
         nixies.SetBlink(1000,0); // off !
@@ -155,8 +157,8 @@ void setup()
   Rot1.init(PinRot1_1,PinRot1_2);
   
   Rot1.setMin(10);
-  Rot1.setMax(nixies.GetBrightness()/50);
-  Rot1.setVal(nixies.GetBrightness()/50);
+  Rot1.setMax(nixies.GetMaxBrightness()/50);
+  Rot1.setVal(nixies.GetMaxBrightness()/50);
 
   Rot2.init(PinRot2_1,PinRot2_2);
   Rot2.setMin(timeOut.getPosMin());
@@ -279,16 +281,20 @@ void loop()
 
   if(Rot1.getVal() != rot1Prev)
   {
-        timeOut.newEvent();
-        rot1Prev = Rot1.getVal();
+    Serial.print("Brightness set to: ");
+    Serial.println(Rot1.getVal()*50);
+    timeOut.newEvent();
+    rot1Prev = Rot1.getVal();
   }
 
   if(timeOut.getDispStatus())
   {
+    
     nixies.SetBrightness(Rot1.getVal()*50);
   }
   else
   {
+    
     nixies.SetBrightness(0); // off !
   }
 

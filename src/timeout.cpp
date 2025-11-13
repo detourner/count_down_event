@@ -15,6 +15,10 @@ void TimeOut::Setup(uint32_t timeOut, uint32_t maxTimeOut, CallbackType callback
 void TimeOut::CyclTask(int rotPos)
 {
     unsigned long time = millis();
+    if(time - _prevTime < 50) // update every 50ms
+    {
+        return;
+    }
     _currentTime += (time - _prevTime);
     _prevTime = time;
 

@@ -44,6 +44,12 @@ public:
     // This method may update the event (auto-acknowledge) and persist changes.
     bool getEvent(uint32_t tagId, Event &out);
 
+    // Update an event title. Returns true if event found and updated.
+    bool setTitle(uint32_t tagId, const String &title);
+
+    // Configure an alarm for an event. index 0..MAX_ALARMS-1
+    bool setAlarm(uint32_t tagId, size_t index, int16_t daysBefore);
+
     // Number of stored events
     size_t count() const { return _count; }
 

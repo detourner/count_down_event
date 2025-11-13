@@ -25,6 +25,10 @@ void tags::CyclTask(void)
 {
 
     unsigned long time = millis();
+    if(time - _prevTime < 50) // update every 50ms
+    {
+        return;
+    }
     _currentTime += (time - _prevTime);
     _prevTime = time;
 

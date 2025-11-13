@@ -17,12 +17,10 @@ void rotaryCoder::init(const int pin_irq, const int pin_updw, const bool invert)
 
 void rotaryCoder::handler()
 {
-    long t = millis();
-    if(t < _timeIRQ + 10)  // debounce xx ms
-    {
-        return;
-    }
-    _timeIRQ = t;
+    static TickType_t lastTick = 0;
+    TickType_t now = xTaskGetTickCountFromISR();
+    if (now - lastTick < pdMS_TO_TICKS(10)) return; // debounce 10ms
+    lastTick = now;
 
     bool in = digitalRead(_pin_updw);
     in = _invert ? !in : in;

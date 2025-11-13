@@ -140,6 +140,24 @@ bool EventList::getEvent(uint32_t tagId, Event &out)
     return true;
 }
 
+bool EventList::setTitle(uint32_t tagId, const String &title)
+{
+    int idx = findIndex(tagId);
+    if (idx < 0) return false;
+    _events[idx].setTitle(title);
+    saveEvent(_events[idx], idx);
+    return true;
+}
+
+bool EventList::setAlarm(uint32_t tagId, size_t index, int16_t daysBefore)
+{
+    int idx = findIndex(tagId);
+    if (idx < 0) return false;
+    if (!_events[idx].setAlarm(index, daysBefore)) return false;
+    saveEvent(_events[idx], idx);
+    return true;
+}
+
 void EventList::clear(bool clearStorage)
 {
     for (int i = 0; i < (int)EVENTLIST_MAX_EVENTS; ++i) 

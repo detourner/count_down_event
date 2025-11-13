@@ -11,11 +11,22 @@ class rotaryCoder {
 
     void setMin(int min) { _min = min; }
     void setMax(int max) { _max = max; }
-    void setVal(int val) { _val = val; }
+    void setVal(int val) 
+    { 
+      noInterrupts(); 
+      _val = val; 
+      interrupts(); 
+    }
 
     int getMin(void) { return _min; }
     int getMax(void) { return _max; }
-    int getVal(void) { return _val; }
+    int getVal(void) 
+    { 
+      noInterrupts();
+      long val = _val;
+      interrupts();
+      return val; 
+    }
 
 
   private:
