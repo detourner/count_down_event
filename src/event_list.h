@@ -3,6 +3,7 @@
 
 #include <Arduino.h>
 #include <Preferences.h>
+#include <ArduinoJson.h>
 #include "event.h"
 
 // Maximum number of events that can be stored. Adjust as needed.
@@ -58,7 +59,11 @@ public:
     // Count total number of active alarms across all events
     size_t countActiveAlarms() const;
 
-private:
+        // Serialize all events to a JSON string
+        // Format: {"events": [{...}, {...}, ...]}
+        String toJson() const;
+
+    private:
     int findIndex(uint32_t tagId) const;
     void saveEvent(const Event& event, size_t index) const;
     bool loadEvent(size_t index, Event& event) const;

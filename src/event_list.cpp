@@ -1,4 +1,5 @@
 #include "event_list.h"
+#include <ArduinoJson.h>
 
 EventList::EventList()
 {
@@ -243,4 +244,31 @@ size_t EventList::countActiveAlarms() const
     }
     
     return totalActiveAlarms;
+}
+
+String EventList::toJson() const
+{
+    JsonDocument doc;
+    JsonArray eventsArray = doc["events"].to<JsonArray>();
+    
+    for (size_t i = 0; i < EVENTLIST_MAX_EVENTS; ++i)
+    {
+        if (_used[i])
+        {
+            // Parse each event's JSON representation
+            JsonDocument eventDoc;
+            String eventJson = _events[i].toString();
+            DeserializationError error = deserializeJson(eventDoc, eventJson);
+            
+            if (!error)
+            {
+                // Copy the event JSON object to the array
+                eventsArray.add(eventDoc.as<JsonObject>());
+            }
+        }
+    }
+    
+    String result;
+    serializeJson(doc, result);
+    return result;
 }

@@ -1,4 +1,5 @@
 #include "event.h"
+#include <ArduinoJson.h>
 
 Event::Event()
     : _tagId(0), _day(0), _month(0), _year(0), _status(EVENT_STATUS_NO_CONFIGURED)
@@ -45,134 +46,114 @@ void Event::setDate(uint8_t day, uint8_t month, uint16_t year)
     updateStatus();
 }
 
-static String pad2(uint8_t v)
+void Event::setTitle(const String &title)
 {
-    if (v < 10) 
+    // Limit title to MAX_TITLE_LEN characters
+    if (title.length() > MAX_TITLE_LEN)
     {
-        return String("0") + String(v);
+        _title = title.substring(0, MAX_TITLE_LEN);
     }
-    return String(v);
+    else
+    {
+        _title = title;
+    }
+}
+
+String Event::getTitle() const
+{
+    return _title;
 }
 
 String Event::toString() const
 {
-    // Format: "<tagId>;<dd>/<mm>/<yyyy>"
-    String s = String((unsigned long)_tagId);
-    s += ";";
-    s += pad2(_day);
-    s += "/";
-    s += pad2(_month);
-    s += "/";
-    s += String((unsigned int)_year);
-    // Append alarms: format ;d1,d2,d3;ackMask  (d = -1 means disabled)
-    s += ";";
+    // Return JSON string representation
+    JsonDocument doc;
+    doc["tagId"] = _tagId;
+    doc["day"] = _day;
+    doc["month"] = _month;
+    doc["year"] = _year;
+    doc["title"] = _title;
+    
+    // Serialize alarms array
+    JsonArray alarmsArray = doc["alarms"].to<JsonArray>();
     for (size_t i = 0; i < MAX_ALARMS; ++i)
     {
-        if (i) s += ",";
-        s += String((int)_alarmDays[i]);
+        JsonObject alarm = alarmsArray.add<JsonObject>();
+        alarm["index"] = i;
+        alarm["daysBefore"] = _alarmDays[i];
+        alarm["acknowledged"] = _alarmAck[i];
     }
-    unsigned int ackMask = 0;
-    for (size_t i = 0; i < MAX_ALARMS; ++i)
-    {
-        if (_alarmAck[i]) ackMask |= (1u << i);
-    }
-    s += ";";
-    s += String((unsigned int)ackMask);
-    // append status value for persistence
-    s += ";";
-    s += String((unsigned int)_status);
-    return s;
+    
+    doc["status"] = (unsigned int)_status;
+    
+    String jsonStr;
+    serializeJson(doc, jsonStr);
+    return jsonStr;
 }
 
 bool Event::fromString(const String &s, Event &out)
 {
-    int sep = s.indexOf(';');
-    if (sep < 0) return false;
-
-    String idStr = s.substring(0, sep);
-    String dateStr = s.substring(sep + 1);
-
-    // parse id using strtoul on c_str
-    const char *id_c = idStr.c_str();
-    char *endptr = nullptr;
-    unsigned long id = strtoul(id_c, &endptr, 10);
-    if (id_c == endptr) return false; // no conversion
-
-    int p1 = dateStr.indexOf('/');
-    int p2 = dateStr.lastIndexOf('/');
-    if (p1 < 0 || p2 < 0 || p1 == p2) return false;
-
-    int day = dateStr.substring(0, p1).toInt();
-    int month = dateStr.substring(p1 + 1, p2).toInt();
-    int year = dateStr.substring(p2 + 1).toInt();
-
-    if (day <= 0 || month <= 0 || year <= 0) return false;
-
-    out = Event((uint32_t)id, (uint8_t)day, (uint8_t)month, (uint16_t)year);
-    // Parse optional alarms part: expected format after date: ;d1,d2,d3;ackMask
-    int posA = s.indexOf(';', sep + 1);
-    if (posA >= 0)
-    {
-        int posB = s.indexOf(';', posA + 1);
-        int posC = s.indexOf(';', posB + 1);
-
-        String alarmsList = (posB >= 0) ? s.substring(posA + 1, posB) : String();
-        String ackStr = (posB >= 0 && posC < 0) ? s.substring(posB + 1) : String();
-        if (posB >= 0 && posC > posB) ackStr = s.substring(posB + 1, posC);
-        String statusStr = (posC >= 0) ? s.substring(posC + 1) : String();
-
-        // initialize alarms
-        for (size_t i = 0; i < Event::MAX_ALARMS; ++i)
-        {
-            out._alarmDays[i] = -1;
-            out._alarmAck[i] = false;
-        }
-
-        // parse alarmsList as d1,d2,d3
-        int start = 0;
-        for (size_t i = 0; i < Event::MAX_ALARMS; ++i)
-        {
-            int comma = alarmsList.indexOf(',', start);
-            String tok;
-            if (comma >= 0)
-            {
-                tok = alarmsList.substring(start, comma);
-                start = comma + 1;
+    // Parse JSON string
+    JsonDocument doc;
+    DeserializationError error = deserializeJson(doc, s);
+    
+    if (error) {
+        return false;  // JSON parsing failed
+    }
+    
+    // Check required fields using is<T>() instead of deprecated containsKey()
+    if (!doc["tagId"].is<uint32_t>() || !doc["day"].is<uint8_t>() || 
+        !doc["month"].is<uint8_t>() || !doc["year"].is<uint16_t>()) {
+        return false;  // Missing required fields
+    }
+    
+    uint32_t tagId = doc["tagId"];
+    uint8_t day = doc["day"];
+    uint8_t month = doc["month"];
+    uint16_t year = doc["year"];
+    
+    if (day <= 0 || month <= 0 || year <= 0) {
+        return false;  // Invalid date
+    }
+    
+    out = Event(tagId, day, month, year);
+    
+    // Parse optional title
+    if (doc["title"].is<String>()) {
+        out.setTitle(doc["title"].as<String>());
+    }
+    
+    // Initialize alarms
+    for (size_t i = 0; i < Event::MAX_ALARMS; ++i) {
+        out._alarmDays[i] = -1;
+        out._alarmAck[i] = false;
+    }
+    
+    // Parse alarms array if present
+    if (doc["alarms"].is<JsonArray>()) {
+        JsonArray alarmsArray = doc["alarms"].as<JsonArray>();
+        size_t idx = 0;
+        for (JsonObject alarm : alarmsArray) {
+            if (idx >= Event::MAX_ALARMS) break;
+            
+            if (alarm["daysBefore"].is<int16_t>()) {
+                out._alarmDays[idx] = alarm["daysBefore"];
             }
-            else
-            {
-                tok = alarmsList.substring(start);
+            if (alarm["acknowledged"].is<bool>()) {
+                out._alarmAck[idx] = alarm["acknowledged"];
             }
-
-            tok.trim();
-            if (tok.length() > 0)
-            {
-                int val = tok.toInt();
-                out._alarmDays[i] = val;
-            }
-        }
-
-        // parse ack mask
-        unsigned int ackMask = 0;
-        if (ackStr.length() > 0) ackMask = (unsigned int)ackStr.toInt();
-        for (size_t i = 0; i < Event::MAX_ALARMS; ++i)
-        {
-            out._alarmAck[i] = (ackMask & (1u << i)) != 0;
-        }
-
-        // parse optional status
-        if (statusStr.length() > 0)
-        {
-            unsigned int st = (unsigned int)statusStr.toInt();
-            out._status = (eventStatus_t)st;
-        }
-        else
-        {
-            // compute status from the date
-            out.updateStatus();
+            idx++;
         }
     }
-
+    
+    // Parse optional status
+    if (doc["status"].is<uint32_t>()) {
+        unsigned int st = doc["status"];
+        out._status = (eventStatus_t)st;
+    } else {
+        out.updateStatus();
+    }
+    
     return true;
 }
 

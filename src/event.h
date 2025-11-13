@@ -20,11 +20,17 @@ public:
     // Setters
     void setTagId(uint32_t id);
     void setDate(uint8_t day, uint8_t month, uint16_t year);
+    void setTitle(const String &title);
 
-    // Serialize to string: "<tagId>;<dd>/<mm>/<yyyy>"
+    // Getters for title
+    String getTitle() const;
+
+    // Serialize to JSON string
+    // Format: {"tagId": uint32, "day": uint8, "month": uint8, "year": uint16, 
+    //          "title": string, "alarms": [{...}], "status": uint}
     String toString() const;
 
-    // Parse from string produced by toString(). Returns true on success.
+    // Parse from JSON string produced by toString(). Returns true on success.
     static bool fromString(const String &s, Event &out);
 
     // Helpers
@@ -84,10 +90,13 @@ private:
     // Common initialization used by constructors
     void initAlarms();
     
+    static const size_t MAX_TITLE_LEN = 64;
+
     uint32_t _tagId;
     uint8_t  _day;
     uint8_t  _month;
     uint16_t _year;
+    String   _title;
 
     int16_t _alarmDays[MAX_ALARMS];   // -1 = disabled, otherwise days before
     bool    _alarmAck[MAX_ALARMS];
