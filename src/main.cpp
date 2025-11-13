@@ -1,7 +1,7 @@
 #include "WifiManager.h"
 #include "nvs_flash.h"
 #include "led.h"
-#include "rotary_coder.h"
+#include "RotaryEncoder.h"
 #include "nixies_drv.h"
 #include "tags.h"
 #include "timeout.h"
@@ -24,8 +24,8 @@ WifiManager wifiManager(apSSID, apPassword);
 #define PinRot2_2  34
 
 Led wink_led;
-rotaryCoder Rot1;
-rotaryCoder Rot2;
+RotaryEncoder  *Rot1 = nullptr;
+RotaryEncoder  *Rot2 = nullptr;
 
 NixiesDriver nixies;
 TimeOut timeOut;
@@ -36,7 +36,15 @@ EventList events;  // Will auto-load from NVS
 
 unsigned long startTimeDisplay = 0;
 
+IRAM_ATTR void checkPositionRot1()
+{
+  Rot1->tick(); // just call tick() to check the state.
+}
 
+IRAM_ATTR void checkPositionRot2()
+{
+  Rot2->tick(); // just call tick() to check the state.
+}
 
 // Function to update LED winks based on active alarms
 void updateActiveAlarmsWinks()
@@ -154,17 +162,36 @@ void setup()
 
   // Rotary Encoder for Display Duration. Define limits and initial value.
   // The duration is in seconds.
-  Rot1.init(PinRot1_1,PinRot1_2);
+  Rot1 = new RotaryEncoder(PinRot1_1, PinRot1_2, RotaryEncoder::LatchMode::TWO03);
+  Rot1->setMin(10);
+  Rot1->setMax(nixies.GetMaxBrightness()/50);
+  Rot1->setPosition(nixies.GetMaxBrightness()/50); // initial 5 minutes
+
+  // register interrupt routine
+  attachInterrupt(digitalPinToInterrupt(PinRot1_1), checkPositionRot1, CHANGE);
+  attachInterrupt(digitalPinToInterrupt(PinRot1_2), checkPositionRot1, CHANGE);
   
-  Rot1.setMin(10);
+
+  
+  /*Rot1.setMin(10);
   Rot1.setMax(nixies.GetMaxBrightness()/50);
   Rot1.setVal(nixies.GetMaxBrightness()/50);
 
   Rot2.init(PinRot2_1,PinRot2_2);
   Rot2.setMin(timeOut.getPosMin());
   Rot2.setMax(timeOut.getPosMax());
-  Rot2.setVal(timeOut.getPosDef());
+  Rot2.setVal(timeOut.getPosDef());*/
 
+  Rot2 = new RotaryEncoder(PinRot2_1, PinRot2_2, RotaryEncoder::LatchMode::TWO03);
+
+  Rot2->setMin(timeOut.getPosMin());
+  Rot2->setMax(timeOut.getPosMax());
+  Rot2->setPosition(timeOut.getPosDef());
+
+  // register interrupt routine
+  attachInterrupt(digitalPinToInterrupt(PinRot2_1), checkPositionRot2, CHANGE);
+  attachInterrupt(digitalPinToInterrupt(PinRot2_2), checkPositionRot2, CHANGE);
+  
     
   wink_led.Setup(PinWinkLed);
   wink_led.setWinks( 0 );
@@ -227,6 +254,9 @@ void loop()
   static unsigned long lastNTPRetry = 0;
   static unsigned long lastAlarmCheck = 0;
   static int rot1Prev = 0;
+  static int rot2Prev = 0;
+  
+
   
 
   // Non-blocking NTP sync check
@@ -279,18 +309,28 @@ void loop()
     }
   }
 
-  if(Rot1.getVal() != rot1Prev)
+  if(Rot1->getPosition() != rot1Prev)
   {
-    Serial.print("Brightness set to: ");
-    Serial.println(Rot1.getVal()*50);
-    timeOut.newEvent();
-    rot1Prev = Rot1.getVal();
+    Serial.print("Rot1: ");
+    rot1Prev = Rot1->getPositionWithLimit();
+    //timeOut.newEvent();
+    Serial.println(rot1Prev);    
+
+  }
+
+  if(Rot2->getPosition() != rot2Prev)
+  {
+    Serial.print("Rot2: ");
+    rot2Prev = Rot2->getPositionWithLimit();
+    //timeOut.newEvent();
+    Serial.println(rot2Prev);    
+
   }
 
   if(timeOut.getDispStatus())
   {
     
-    nixies.SetBrightness(Rot1.getVal()*50);
+    //nixies.SetBrightness(Rot1->getPosition()*50);
   }
   else
   {
@@ -302,7 +342,10 @@ void loop()
   nixies.CyclTask();
   tag.CyclTask();
 
-  timeOut.CyclTask(Rot2.getVal());
+  timeOut.CyclTask(Rot2->getPosition());
+
+  Rot1->tick();
+  Rot2->tick();
 
 
 

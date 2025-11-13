@@ -2,7 +2,7 @@
 #define _TIMEOUT_H_
 
 #include <Arduino.h>
-#include "rotary_coder.h"
+
 
 typedef void (*CallbackType)(uint32_t);
 
