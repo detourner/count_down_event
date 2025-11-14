@@ -56,30 +56,51 @@ void updateActiveAlarmsWinks()
     wink_led.setWinks(totalActiveAlarms);
 }
 
-void timeOutCallback(uint32_t dispValue)
+void timeOutCallback(uint32_t dispValue, timeoutMode_t mode)
 {
-    Serial.print("Display Value due to timeout: ");
-    Serial.println(dispValue);
-    if(dispValue == 0)
-    {
+  switch(mode)
+  {
+    case TIMEOUT_MODE_TIMEOUT:
+        Serial.print("Timeout set to (s): ");
+        Serial.println(dispValue);
+        if(dispValue == timeOut.Infinity())
+        {
+            nixies.SetBlink(250,50); // blink fast !
+            nixies.DispValue(999);
+        }
+        else
+        {
+            nixies.SetBlink(500,50); // blink low !
+            nixies.DispValue(dispValue);
+        }
+        break;
+    case TIMEOUT_MODE_TIMEOUT_END:
+        Serial.print("Timeout ended, turning off display. Timeout was (s): ");
+        Serial.println(dispValue);
         nixies.SetBlink(1000,0); // off !
-    }
-    else if(dispValue == timeOut.Infinity())
-    {
-        nixies.SetBlink(250,0); // blink fast !
-        nixies.DispValue(999);
-    }
-    else
-    {
+        // save parameters
+        break;
+    case TIMEOUT_MODE_BRIGHTNESS:
+        Serial.print("Brightness set to: ");
+        Serial.println(dispValue);
+        nixies.SetBrightness(dispValue);
         nixies.SetBlink(500,50); // blink low !
         nixies.DispValue(dispValue);
-    }
+        break;
+    case TIMEOUT_MODE_BRIGHTNESS_END:
+        Serial.print("Brightness adjustment ended. Brightness set to: ");
+        Serial.println(dispValue);
+        nixies.SetBrightness(dispValue);
+        nixies.SetBlink(1000,0); // off !
+        // save parameters
+        break;
+    default:
+        break;
+  }
 }
 
 void tagCallback(uint32_t tag_id)
 {
-  timeOut.newEvent(); // Reset timeout !
-
   // If tag_id is 0, no tag is present (just removed)
   if (tag_id == 0)
   {
@@ -301,31 +322,11 @@ void loop()
     }
   }
 
-  if(Rot1->getPosition() != rot1Prev)
-  {
-    Serial.print("Rot1: ");
-    rot1Prev = Rot1->getPosition();
-    timeOut.newEvent();
-    nixies.DispValue(rot1Prev);
-    Serial.println(rot1Prev);    
-
-  }
-
-
-  if(timeOut.getDispStatus())
-  {
-    nixies.SetBrightness(Rot1->getPosition());
-  }
-  else
-  {
-    nixies.SetBrightness(0); // off !
-  }
-
   wink_led.CyclTask();
   nixies.CyclTask();
   tag.CyclTask();
 
-  timeOut.CyclTask(Rot2->getPosition());
+  timeOut.CyclTask(Rot2->getPosition(), Rot1->getPosition());
 
   Rot1->tick();
   Rot2->tick();

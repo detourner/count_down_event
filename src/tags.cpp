@@ -4,7 +4,7 @@
 
 static MFRC522       _mfrc522(SS_PIN, RST_PIN);             // Tag reader
 
-void tags::Setup(CallbackType callback)
+void tags::Setup(CallbackTypeTag callback)
 {
     SPI.begin();
 

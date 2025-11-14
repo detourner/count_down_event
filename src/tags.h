@@ -10,7 +10,7 @@
 #define SS_PIN      5
 #define RST_PIN     4
 
-typedef void (*CallbackType)(uint32_t);
+typedef void (*CallbackTypeTag)(uint32_t);
 
 class tags
 {
@@ -19,7 +19,7 @@ class tags
         tags() { };
 
         // Setup, must be call in setup() function in main file
-        void Setup(CallbackType callback = nullptr);
+        void Setup(CallbackTypeTag callback = nullptr);
 
         // Task cycl, muste be call in loop() function in main file
         // as soon as possible.
@@ -44,7 +44,7 @@ class tags
       unsigned long _prevTime = 0;
       uint8_t       _currentTime = 0;
 
-      CallbackType _callback;
+      CallbackTypeTag _callback;
 
 };
 

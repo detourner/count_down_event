@@ -1,18 +1,18 @@
 #include "timeout.h"
 
-void TimeOut::Setup(uint32_t timeOut, uint32_t maxTimeOut, CallbackType callback)
+void TimeOut::Setup(uint32_t timeOut, uint32_t maxTimeOut, CallbackTypeTimeOut callback)
 
 {
     _maxTimeOut = ((maxTimeOut / 1000) > 999) ? 999000 : maxTimeOut;
     _setTimeOutDuration = (timeOut > _maxTimeOut ) ? _maxTimeOut : timeOut;
     _callback = callback;
-    _posPrev = timeOut / 1000;
+    _posPrevTimeOut = timeOut / 1000;
 
 
     _setTimeOut = false;
 }
 
-void TimeOut::CyclTask(int rotPos)
+void TimeOut::CyclTask(int rotPosTimeOut, int rotPosBrightness)
 {
     unsigned long time = millis();
     if(time - _prevTime < 50) // update every 50ms
@@ -26,15 +26,15 @@ void TimeOut::CyclTask(int rotPos)
     if(_setTimeOut)
     {
         //reset timer
-        if(rotPos != _posPrev)
+        if(rotPosTimeOut != _posPrevTimeOut)
         {
             _currentTime = 0 ;
-            _posPrev = rotPos;
-            _setTimeOutDuration = rotPos * 1000;
+            _posPrevTimeOut = rotPosTimeOut;
+            _setTimeOutDuration = rotPosTimeOut * 1000;
 
             if(_callback != nullptr)
             {
-                _callback(_posPrev);
+                _callback(_posPrevTimeOut, TIMEOUT_MODE_TIMEOUT);
             }
         }
         if(_currentTime > 5000)
@@ -44,17 +44,45 @@ void TimeOut::CyclTask(int rotPos)
 
             if(_callback != nullptr)
             {
-                _callback(0);
+                _callback(_posPrevTimeOut, TIMEOUT_MODE_TIMEOUT_END);
+            }
+        }
+    }
+    else if (_setBrightness)
+    {
+        if(rotPosBrightness != _posPrevBrightness)
+        {
+            _currentTime = 0 ;
+            _posPrevBrightness = rotPosBrightness;
+            if(_callback != nullptr)
+            {
+                _callback(rotPosBrightness, TIMEOUT_MODE_BRIGHTNESS);
+            }
+        }
+        if(_currentTime > 5000)
+        {
+            _setBrightness = false;
+            _currentTime = 0;
+
+            if(_callback != nullptr)
+            {
+                _callback(rotPosBrightness, TIMEOUT_MODE_BRIGHTNESS_END);
             }
         }
     }
     else
     {
-        if(rotPos != _posPrev)
+        if(rotPosTimeOut != _posPrevTimeOut)
         {
             _setTimeOut = true;
             _currentTime = 0 ;
-            _posPrev = rotPos;
+            _posPrevTimeOut = rotPosTimeOut;
+        }
+        else if(rotPosBrightness != _posPrevBrightness)
+        {
+            _setBrightness = true;
+            _currentTime = 0 ;
+            _posPrevBrightness = rotPosBrightness;
         }
 
         if(_newEvent)
