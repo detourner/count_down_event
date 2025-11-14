@@ -48,9 +48,6 @@ public:
   // retrieve the current position
   long getPosition();
 
-  // retrive the current position with limited range
-  long getPositionWithLimit();
-
   // simple retrieve of the direction the knob was rotated last time. 0 = No rotation, 1 = Clockwise, -1 = Counter Clockwise
   Direction getDirection();
 
@@ -81,7 +78,6 @@ private:
   volatile long _position;        // Internal position (4 times _positionExt)
   volatile long _positionExt;     // External position
   volatile long _positionExtPrev; // External position (used only for direction checking)
-  volatile long _poistionExtWithLimit; // External position with limits applied 
 
   unsigned long _positionExtTime;     // The time the last position change was detected.
   unsigned long _positionExtTimePrev; // The time the previous position change was detected.

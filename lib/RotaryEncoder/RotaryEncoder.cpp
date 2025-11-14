@@ -72,12 +72,6 @@ long RotaryEncoder::getPosition()
   return _positionExt;
 } // getPosition()
 
-long RotaryEncoder::getPositionWithLimit()
-{
-   return _poistionExtWithLimit;
-} // getPositionWithLimit() 
-
-
 RotaryEncoder::Direction RotaryEncoder::getDirection()
 {
   RotaryEncoder::Direction ret = Direction::NOROTATION;
@@ -99,6 +93,13 @@ RotaryEncoder::Direction RotaryEncoder::getDirection()
 
 void RotaryEncoder::setPosition(long newPosition)
 {
+    // Apply limits for position with limit
+    if (newPosition < (long)_limitMin) {
+      newPosition = _limitMin;
+    } else if (newPosition > (long)_limitMax) {
+      newPosition = _limitMax;
+    }
+  
   switch (_mode) {
   case LatchMode::FOUR3:
   case LatchMode::FOUR0:
@@ -115,14 +116,7 @@ void RotaryEncoder::setPosition(long newPosition)
     _positionExtPrev = newPosition;
     break;
   } // switch
-  // Apply limits for position with limit
-    if (_positionExt < (long)_limitMin) {
-      _poistionExtWithLimit = _limitMin;
-    } else if (_positionExt > (long)_limitMax) {
-      _poistionExtWithLimit = _limitMax;
-    } else {
-      _poistionExtWithLimit = _positionExt;
-    }
+
 
 } // setPosition()
 
@@ -176,12 +170,11 @@ void RotaryEncoder::tick(int sig1, int sig2)
 
     // Apply limits for position with limit
     if (_positionExt < (long)_limitMin) {
-      _poistionExtWithLimit = _limitMin;
+      setPosition(_limitMin);
     } else if (_positionExt > (long)_limitMax) {
-      _poistionExtWithLimit = _limitMax;
-    } else {
-      _poistionExtWithLimit = _positionExt;
-    }
+      setPosition(_limitMax);
+    } 
+
   } // if
 } // tick()
 

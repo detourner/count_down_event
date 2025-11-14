@@ -159,28 +159,23 @@ void setup()
 
   timeOut.Setup(10000, 600000, &timeOutCallback);
 
+  nixies.Setup();
+  nixies.SetBrightness(200);
+  nixies.SetBlink(1000, 50); // blink every 1s with 50% duty cycle
+  nixies.DispValue(999);
+
 
   // Rotary Encoder for Display Duration. Define limits and initial value.
   // The duration is in seconds.
   Rot1 = new RotaryEncoder(PinRot1_1, PinRot1_2, RotaryEncoder::LatchMode::TWO03);
   Rot1->setMin(10);
-  Rot1->setMax(nixies.GetMaxBrightness()/50);
-  Rot1->setPosition(nixies.GetMaxBrightness()/50); // initial 5 minutes
+  Rot1->setMax(nixies.GetMaxBrightness());
+  Rot1->setPosition(nixies.GetMaxBrightness()/2); // initial 5 minutes
 
   // register interrupt routine
   attachInterrupt(digitalPinToInterrupt(PinRot1_1), checkPositionRot1, CHANGE);
   attachInterrupt(digitalPinToInterrupt(PinRot1_2), checkPositionRot1, CHANGE);
   
-
-  
-  /*Rot1.setMin(10);
-  Rot1.setMax(nixies.GetMaxBrightness()/50);
-  Rot1.setVal(nixies.GetMaxBrightness()/50);
-
-  Rot2.init(PinRot2_1,PinRot2_2);
-  Rot2.setMin(timeOut.getPosMin());
-  Rot2.setMax(timeOut.getPosMax());
-  Rot2.setVal(timeOut.getPosDef());*/
 
   Rot2 = new RotaryEncoder(PinRot2_1, PinRot2_2, RotaryEncoder::LatchMode::TWO03);
 
@@ -200,10 +195,7 @@ void setup()
 
 
 
-  nixies.Setup();
-  nixies.SetBrightness(200);
-  nixies.SetBlink(1000, 50); // blink every 1s with 50% duty cycle
-  nixies.DispValue(999);
+  
 
   tag.Setup(&tagCallback);
 
@@ -312,29 +304,20 @@ void loop()
   if(Rot1->getPosition() != rot1Prev)
   {
     Serial.print("Rot1: ");
-    rot1Prev = Rot1->getPositionWithLimit();
-    //timeOut.newEvent();
+    rot1Prev = Rot1->getPosition();
+    timeOut.newEvent();
+    nixies.DispValue(rot1Prev);
     Serial.println(rot1Prev);    
 
   }
 
-  if(Rot2->getPosition() != rot2Prev)
-  {
-    Serial.print("Rot2: ");
-    rot2Prev = Rot2->getPositionWithLimit();
-    //timeOut.newEvent();
-    Serial.println(rot2Prev);    
-
-  }
 
   if(timeOut.getDispStatus())
   {
-    
-    //nixies.SetBrightness(Rot1->getPosition()*50);
+    nixies.SetBrightness(Rot1->getPosition());
   }
   else
   {
-    
     nixies.SetBrightness(0); // off !
   }
 
