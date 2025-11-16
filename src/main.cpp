@@ -7,6 +7,7 @@
 #include "timeout.h"
 #include "WebServer.h"
 #include "event_list.h"
+#include "preferences_manager.h"
 #include "time.h"
 #include "esp_sntp.h"
 
@@ -33,6 +34,7 @@ TimeOut timeOut;
 tags tag;
 WebServer webServer;
 EventList events;  // Will auto-load from NVS
+PreferencesManager prefs;
 
 unsigned long startTimeDisplay = 0;
 
@@ -78,7 +80,10 @@ void timeOutCallback(uint32_t dispValue, timeoutMode_t mode)
         Serial.print("Timeout ended, turning off display. Timeout was (s): ");
         Serial.println(dispValue);
         nixies.SetBlink(1000,0); // off !
-        // save parameters
+        // Save timeout value to flash
+        prefs.setTimeout(dispValue);
+        prefs.save();
+        Serial.println("Timeout saved to flash");
         break;
     case TIMEOUT_MODE_BRIGHTNESS:
         Serial.print("Brightness set to: ");
@@ -92,7 +97,14 @@ void timeOutCallback(uint32_t dispValue, timeoutMode_t mode)
         Serial.println(dispValue);
         nixies.SetBrightness(dispValue);
         nixies.SetBlink(1000,0); // off !
-        // save parameters
+        // Save brightness value to flash
+        prefs.setBrightness(dispValue);
+        prefs.save();
+        Serial.println("Brightness saved to flash");
+        break;
+    case TIEMOUT_IS_ACTIVE:
+        Serial.println("Timeout is active.");
+        nixies.SetBlink(1000,0); // turn off display
         break;
     default:
         break;
@@ -105,6 +117,7 @@ void tagCallback(uint32_t tag_id)
   if (tag_id == 0)
   {
       Serial.println("Tag removed");
+      nixies.SetBlink(1000,0); // turn off display
       return;
   }
 
@@ -177,11 +190,16 @@ void setup()
   //nvs_flash_init(); // initialize the NVS partition.
 
   events.load(); // Load events from NVS
+  
+  // Load brightness and timeout preferences from flash
+  prefs.load();
+  uint16_t savedBrightness = prefs.getBrightness();
+  uint32_t savedTimeout = prefs.getTimeout();
 
-  timeOut.Setup(10000, 600000, &timeOutCallback);
+  timeOut.Setup(savedTimeout, 600, savedBrightness, &timeOutCallback);
 
   nixies.Setup();
-  nixies.SetBrightness(200);
+  nixies.SetBrightness(savedBrightness);
   nixies.SetBlink(1000, 50); // blink every 1s with 50% duty cycle
   nixies.DispValue(999);
 
@@ -191,7 +209,7 @@ void setup()
   Rot1 = new RotaryEncoder(PinRot1_1, PinRot1_2, RotaryEncoder::LatchMode::TWO03);
   Rot1->setMin(10);
   Rot1->setMax(nixies.GetMaxBrightness());
-  Rot1->setPosition(nixies.GetMaxBrightness()/2); // initial 5 minutes
+  Rot1->setPosition(savedBrightness); // Use saved brightness as initial position
 
   // register interrupt routine
   attachInterrupt(digitalPinToInterrupt(PinRot1_1), checkPositionRot1, CHANGE);
@@ -202,7 +220,7 @@ void setup()
 
   Rot2->setMin(timeOut.getPosMin());
   Rot2->setMax(timeOut.getPosMax());
-  Rot2->setPosition(timeOut.getPosDef());
+  Rot2->setPosition(timeOut.getPosDef());  // Use saved timeout as initial position
 
   // register interrupt routine
   attachInterrupt(digitalPinToInterrupt(PinRot2_1), checkPositionRot2, CHANGE);
@@ -211,11 +229,6 @@ void setup()
     
   wink_led.Setup(PinWinkLed);
   wink_led.setWinks( 0 );
-
-  
-
-
-
   
 
   tag.Setup(&tagCallback);
@@ -330,7 +343,4 @@ void loop()
 
   Rot1->tick();
   Rot2->tick();
-
-
-
 }

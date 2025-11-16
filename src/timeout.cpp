@@ -1,13 +1,15 @@
 #include "timeout.h"
+#include "preferences_manager.h"
 
-void TimeOut::Setup(uint32_t timeOut, uint32_t maxTimeOut, CallbackTypeTimeOut callback)
+void TimeOut::Setup(uint32_t timeOut, uint32_t maxTimeOut, int brightness, CallbackTypeTimeOut callback)
 
 {
-    _maxTimeOut = ((maxTimeOut / 1000) > 999) ? 999000 : maxTimeOut;
-    _setTimeOutDuration = (timeOut > _maxTimeOut ) ? _maxTimeOut : timeOut;
+    _maxTimeOut = maxTimeOut * 1000; // convert to ms
+    _setTimeOutDuration = ( (timeOut * 1000) > _maxTimeOut ) ? _maxTimeOut : (timeOut * 1000);
+    
     _callback = callback;
-    _posPrevTimeOut = timeOut / 1000;
-
+    _posPrevTimeOut = timeOut;
+    _posPrevBrightness = brightness;    
 
     _setTimeOut = false;
 }
@@ -30,8 +32,7 @@ void TimeOut::CyclTask(int rotPosTimeOut, int rotPosBrightness)
         {
             _currentTime = 0 ;
             _posPrevTimeOut = rotPosTimeOut;
-            _setTimeOutDuration = rotPosTimeOut * 1000;
-
+            
             if(_callback != nullptr)
             {
                 _callback(_posPrevTimeOut, TIMEOUT_MODE_TIMEOUT);
@@ -41,6 +42,7 @@ void TimeOut::CyclTask(int rotPosTimeOut, int rotPosBrightness)
         {
             _setTimeOut = false;
             _currentTime = 0;
+            _setTimeOutDuration = rotPosTimeOut * 1000;
 
             if(_callback != nullptr)
             {
@@ -63,7 +65,7 @@ void TimeOut::CyclTask(int rotPosTimeOut, int rotPosBrightness)
         {
             _setBrightness = false;
             _currentTime = 0;
-
+            
             if(_callback != nullptr)
             {
                 _callback(rotPosBrightness, TIMEOUT_MODE_BRIGHTNESS_END);
@@ -92,15 +94,16 @@ void TimeOut::CyclTask(int rotPosTimeOut, int rotPosBrightness)
             _switchOn = true;
         }
 
-        if(_currentTime > _setTimeOutDuration)
+        if(_currentTime > _setTimeOutDuration && _switchOn == true)
         {
             _switchOn = false;
             _currentTime = _setTimeOutDuration + 50;
 
-        }
-        else
-        {
-            _switchOn = true;
+            if(_callback != nullptr)
+            {
+                _callback(0, TIEMOUT_IS_ACTIVE);
+            }
+
         }
     }
 }

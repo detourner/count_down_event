@@ -8,7 +8,8 @@ typedef enum
     TIMEOUT_MODE_TIMEOUT = 0,
     TIMEOUT_MODE_TIMEOUT_END = 1,
     TIMEOUT_MODE_BRIGHTNESS = 2,
-    TIMEOUT_MODE_BRIGHTNESS_END = 3
+    TIMEOUT_MODE_BRIGHTNESS_END = 3,
+    TIEMOUT_IS_ACTIVE = 4
 } timeoutMode_t;
 
 typedef void (*CallbackTypeTimeOut)(uint32_t, timeoutMode_t);
@@ -18,7 +19,7 @@ class TimeOut
     public :
 
         TimeOut() { };
-        void Setup(uint32_t timeOut, uint32_t maxTimeOut, CallbackTypeTimeOut callback = nullptr);
+        void Setup(uint32_t timeOut, uint32_t maxTimeOut, int brightness, CallbackTypeTimeOut callback = nullptr);
         void CyclTask(int rotPosTimeOut, int rotPosBrightness);
 
         void newEvent(void) { _newEvent = true; }
