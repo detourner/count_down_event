@@ -12,7 +12,7 @@
 #include "esp_sntp.h"
 
 
-const char* apSSID = "MazeSliderMachine";
+const char* apSSID = "CountDownEvent";
 const char* apPassword = "12345678";
 
 WifiManager wifiManager(apSSID, apPassword);
@@ -32,7 +32,6 @@ NixiesDriver nixies;
 NixiesManager nixiesManager;
 
 tags tag;
-WebServer webServer;
 EventList events;  // Will auto-load from NVS
 PreferencesManager prefs;
 
@@ -234,10 +233,9 @@ void setup()
   tag.Setup(&tagCallback);
 
   // Initialize WiFi
-  wifiManager.begin();
+  wifiManager.Begin();
   
-  // Start web server after WiFi is initialized
-  webServer.begin();
+  //setupWebUiRoutes(wifiManager.getServer(), events);
 
   // Initial NTP configuration
   configTime(3600, 3600, "pool.ntp.org", "time.nist.gov", "time.google.com"); // UTC+1 offset, daylight saving enabled
@@ -322,18 +320,8 @@ void loop()
     updateActiveAlarmsWinks();
   }
 
-  if (millis() - lastFetch > 500)
-   {
-    lastFetch = millis();
-    if(wifiManager.checkWiFiConnection())
-    {
-      Serial.println("o");
-    }
-    else
-    {
-      Serial.println("-");
-    }
-  }
+  wifiManager.CyclTask();
+  
 
   wink_led.CyclTask();
   nixies.CyclTask();

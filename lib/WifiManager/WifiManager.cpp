@@ -5,10 +5,17 @@ WifiManager::WifiManager(const char* apSSID, const char* apPassword)
 {
 }
 
-void WifiManager::begin()
+void WifiManager::Begin()
 {
     Serial.begin(115200);
-    WiFi.mode(WIFI_STA);
+    WiFi.mode(WIFI_MODE_APSTA);
+
+
+    WiFi.softAP(apSSID, apPassword, 1, false, 1); // 1 = channel, false = hidden, 1 = max connections
+    WiFi.softAPConfig(ap_local_ip, ap_gateway, ap_subnet);
+    Serial.println("AP started");
+    Serial.print("IP address: ");
+    Serial.println(WiFi.softAPIP());
 
     // Load credentials from flash memory
     preferences.begin("wificre", true);
@@ -20,29 +27,26 @@ void WifiManager::begin()
     {
         Serial.println("Connecting to stored Wi-Fi network...");
         connected = connectToWiFi(networkSSID, networkPassword);
+        Serial.print("Connected: "); Serial.println(connected);
     }
 
-    if(!connected)
-    {
-        WiFi.mode(WIFI_AP_STA);
-        WiFi.softAP(apSSID, apPassword, 1, false, 1); // 1 = channel, false = hidden, 1 = max connections
-        WiFi.softAPConfig(ap_local_ip, ap_gateway, ap_subnet);
-        Serial.println("AP started");
-        Serial.print("IP address: ");
-        Serial.println(WiFi.softAPIP());
+    // Setup HTTP server routes 
+    // Routes
+    server.on("/wifi", HTTP_GET, [this](AsyncWebServerRequest *request){
+        this->handleWifi(request);
+    });
 
-        server.on("/", std::bind(&WifiManager::handleRoot, this));
-        server.on("/set", HTTP_POST, std::bind(&WifiManager::handleSet, this));
-        server.on("/hello", HTTP_GET, std::bind(&WifiManager::handleHello, this));
-        server.begin();
-        Serial.println("HTTP server started");
-        
-        setupMDNS();
-    }
+    server.on("/wifiset", HTTP_POST, [this](AsyncWebServerRequest *request){
+        this->handleWifiSet(request);
+    });
+   
+    server.begin();
 
+    Serial.println("HTTP server started");
+    setupMDNS();
 }
 
-bool WifiManager::checkWiFiConnection() 
+bool WifiManager::CyclTask() 
 {
     static bool wifiStatus = false;
     unsigned long currentMillis = millis();
@@ -57,6 +61,9 @@ bool WifiManager::checkWiFiConnection()
         if(WiFi.status() == WL_CONNECTED)
         {
             wifiStatus = true;
+            Serial.println("Wi-Fi connected.");
+            Serial.print("IP address: ");
+            Serial.println(WiFi.localIP());
         }
         else
         {
@@ -66,32 +73,30 @@ bool WifiManager::checkWiFiConnection()
         }
     }
     
-    if(connected == false)
-    {
-        // if never connected, manager the HTTP server in AP mode (for the Wi-Fi configuration)
-        server.handleClient();
-    }
-
     return wifiStatus;
   }
 
-void WifiManager::handleRoot()
+
+void WifiManager::handleWifi(AsyncWebServerRequest *request)
 {
     String html = "<html><body><h1>Configure Wi-Fi</h1>";
-    html += "<form action='/set' method='POST'>";
+    html += "<form action='/wifiset' method='POST'>";
     html += "SSID: <input type='text' name='ssid'><br>";
     html += "Password: <input type='password' name='password'><br>";
     html += "<input type='submit' value='Submit'></form>";
     html += "</body></html>";
-    server.send(200, "text/html", html);
+    request->send(200, "text/html", html);
 }
 
-void WifiManager::handleSet()
+void WifiManager::handleWifiSet(AsyncWebServerRequest *request)
 {
-    if (server.hasArg("ssid") && server.hasArg("password"))
+
+    
+    
+    if (request->hasParam("ssid", true) && request->hasParam("password", true))
     {
-        networkSSID = server.arg("ssid");
-        networkPassword = server.arg("password");
+        networkSSID = request->getParam("ssid", true)->value();
+        networkPassword = request->getParam("password", true)->value();
 
         // Save credentials to flash memory
         preferences.begin("wificre", false);
@@ -99,13 +104,13 @@ void WifiManager::handleSet()
         preferences.putString("password", networkPassword);
         preferences.end();
 
-        server.send(200, "text/html", "Credentials received. Connecting to network...");
+        request->send(200, "text/html", "Credentials received. Connecting to network...");
         delay(2000);
         connectToWiFi(networkSSID, networkPassword);
     }
     else
     {
-        server.send(400, "text/html", "Bad Request");
+        request->send(400, "text/html", "Bad Request");
     }
 }
 
@@ -116,10 +121,6 @@ void WifiManager::setupMDNS() {
     }
     MDNS.addService("http", "tcp", 80);
     Serial.println("mDNS responder started at http://cde.local");
-}
-
-void WifiManager::handleHello() {
-    server.send(200, "text/plain", "helloword");
 }
 
 bool WifiManager::connectToWiFi(const String& ssid, const String& password)
@@ -134,15 +135,15 @@ bool WifiManager::connectToWiFi(const String& ssid, const String& password)
     }
     if (WiFi.status() == WL_CONNECTED)
     {
-        Serial.println("Connected to Wi-Fi");
-        server.send(200, "text/html", "Connected to Wi-Fi");
+        Serial.print("Connected to Wi-Fi");
+        Serial.print("IP address: ");
+        Serial.println(WiFi.localIP());
 
         return true;
     }
     else
     {
         Serial.println("Failed to connect to Wi-Fi");
-        server.send(200, "text/html", "Failed to connect to Wi-Fi");
 
         return false;
     }
