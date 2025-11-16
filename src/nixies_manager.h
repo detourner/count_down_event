@@ -10,16 +10,16 @@ typedef enum
     TIMEOUT_MODE_BRIGHTNESS = 2,
     TIMEOUT_MODE_BRIGHTNESS_END = 3,
     TIEMOUT_IS_ACTIVE = 4
-} timeoutMode_t;
+} nixiesMode_t;
 
-typedef void (*CallbackTypeTimeOut)(uint32_t, timeoutMode_t);
+typedef void (*CallbackTypeNixiesManager)(uint32_t, nixiesMode_t);
 
-class TimeOut
+class NixiesManager
 {
     public :
 
-        TimeOut() { };
-        void Setup(uint32_t timeOut, uint32_t maxTimeOut, int brightness, CallbackTypeTimeOut callback = nullptr);
+        NixiesManager() { };
+        void Setup(uint32_t timeOut, uint32_t maxTimeOut, int brightness, CallbackTypeNixiesManager callback = nullptr);
         void CyclTask(int rotPosTimeOut, int rotPosBrightness);
 
         void newEvent(void) { _newEvent = true; }
@@ -47,7 +47,7 @@ class TimeOut
         int           _posPrevBrightness;
 
 
-        CallbackTypeTimeOut _callback;
+        CallbackTypeNixiesManager _callback;
 
 
 };

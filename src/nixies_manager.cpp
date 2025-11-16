@@ -1,7 +1,7 @@
-#include "timeout.h"
+#include "nixies_manager.h"
 #include "preferences_manager.h"
 
-void TimeOut::Setup(uint32_t timeOut, uint32_t maxTimeOut, int brightness, CallbackTypeTimeOut callback)
+void NixiesManager::Setup(uint32_t timeOut, uint32_t maxTimeOut, int brightness, CallbackTypeNixiesManager callback)
 
 {
     _maxTimeOut = maxTimeOut * 1000; // convert to ms
@@ -14,7 +14,7 @@ void TimeOut::Setup(uint32_t timeOut, uint32_t maxTimeOut, int brightness, Callb
     _setTimeOut = false;
 }
 
-void TimeOut::CyclTask(int rotPosTimeOut, int rotPosBrightness)
+void NixiesManager::CyclTask(int rotPosTimeOut, int rotPosBrightness)
 {
     unsigned long time = millis();
     if(time - _prevTime < 50) // update every 50ms

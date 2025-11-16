@@ -4,7 +4,7 @@
 #include "RotaryEncoder.h"
 #include "nixies_drv.h"
 #include "tags.h"
-#include "timeout.h"
+#include "nixies_manager.h"
 #include "WebServer.h"
 #include "event_list.h"
 #include "preferences_manager.h"
@@ -29,7 +29,7 @@ RotaryEncoder  *Rot1 = nullptr;
 RotaryEncoder  *Rot2 = nullptr;
 
 NixiesDriver nixies;
-TimeOut timeOut;
+NixiesManager nixiesManager;
 
 tags tag;
 WebServer webServer;
@@ -58,14 +58,14 @@ void updateActiveAlarmsWinks()
     wink_led.setWinks(totalActiveAlarms);
 }
 
-void timeOutCallback(uint32_t dispValue, timeoutMode_t mode)
+void nixieManagerCallback(uint32_t dispValue, nixiesMode_t mode)
 {
   switch(mode)
   {
     case TIMEOUT_MODE_TIMEOUT:
         Serial.print("Timeout set to (s): ");
         Serial.println(dispValue);
-        if(dispValue == timeOut.Infinity())
+        if(dispValue == nixiesManager.Infinity())
         {
             nixies.SetBlink(250,50); // blink fast !
             nixies.DispValue(999);
@@ -146,7 +146,7 @@ void tagCallback(uint32_t tag_id)
   {
     evt.acknowledgeAlarms(); // Acknowledge any due alarms
     updateActiveAlarmsWinks();  // Update winks when tag is removed
-    timeOut.newEvent(); // Reset timeout !
+    nixiesManager.newEvent(); // Reset timeout !
 
     // Event exists, display days remaining
     int32_t daysLeft = evt.getDaysRemaining();
@@ -196,7 +196,7 @@ void setup()
   uint16_t savedBrightness = prefs.getBrightness();
   uint32_t savedTimeout = prefs.getTimeout();
 
-  timeOut.Setup(savedTimeout, 600, savedBrightness, &timeOutCallback);
+  nixiesManager.Setup(savedTimeout, 600, savedBrightness, &nixieManagerCallback);
 
   nixies.Setup();
   nixies.SetBrightness(savedBrightness);
@@ -218,9 +218,9 @@ void setup()
 
   Rot2 = new RotaryEncoder(PinRot2_1, PinRot2_2, RotaryEncoder::LatchMode::TWO03);
 
-  Rot2->setMin(timeOut.getPosMin());
-  Rot2->setMax(timeOut.getPosMax());
-  Rot2->setPosition(timeOut.getPosDef());  // Use saved timeout as initial position
+  Rot2->setMin(nixiesManager.getPosMin());
+  Rot2->setMax(nixiesManager.getPosMax());
+  Rot2->setPosition(nixiesManager.getPosDef());  // Use saved timeout as initial position
 
   // register interrupt routine
   attachInterrupt(digitalPinToInterrupt(PinRot2_1), checkPositionRot2, CHANGE);
@@ -339,7 +339,7 @@ void loop()
   nixies.CyclTask();
   tag.CyclTask();
 
-  timeOut.CyclTask(Rot2->getPosition(), Rot1->getPosition());
+  nixiesManager.CyclTask(Rot2->getPosition(), Rot1->getPosition());
 
   Rot1->tick();
   Rot2->tick();
