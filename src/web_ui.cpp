@@ -134,7 +134,7 @@ void setupWebUiRoutes(AsyncWebServer &server, EventList &events)
 {
     // Serve main page
     server.on("/", HTTP_GET, [](AsyncWebServerRequest *req){
-        req->send_P(200, "text/html", INDEX_HTML);
+        req->send(200, "text/html", INDEX_HTML);
     });
 
     // Return JSON containing all events

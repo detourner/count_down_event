@@ -1,9 +1,6 @@
 #ifndef WIFIMANAGER_H
 #define WIFIMANAGER_H
 
-#ifdef DELETE
-#undef DELETE
-#endif
 #include <WiFi.h>
 #include <Preferences.h>
 #include <ESPAsyncWebServer.h>
