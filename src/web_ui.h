@@ -15,11 +15,17 @@ class EventListWebUi
         // Register web UI routes on the provided server instance and bind to given EventList
         void setupWebUiRoutes(AsyncWebServer &server, EventList &events);
 
-        void notifyWebUiClients(void);
+        void notifyClients(void);
 
     private:
+
+        void onWsEvent(AsyncWebSocket * server, AsyncWebSocketClient * client,
+                   AwsEventType type, void * arg, uint8_t *data, size_t len);
+
         AsyncWebServer* _server = nullptr;
         EventList* _events = nullptr;
+        AsyncWebSocket _ws{"/ws"};
+
 
 };
 

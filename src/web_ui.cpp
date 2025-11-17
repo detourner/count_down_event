@@ -11,60 +11,93 @@ void EventListWebUi::begin(AsyncWebServer &server, EventList &events)
   _events = &events;
   setupWebUiRoutes(server, events);
 
+   _ws.onEvent([this](AsyncWebSocket * server, AsyncWebSocketClient * client,
+                         AwsEventType type, void * arg, uint8_t *data, size_t len)
+  {
+    this->onWsEvent(server, client, type, arg, data, len);
+  });
+
+  _server->addHandler(&_ws);
+  _server->begin();
+
 }
 
 void  EventListWebUi::setupWebUiRoutes(AsyncWebServer &server, EventList &events)
 {
-    // Return JSON containing all events
-    server.on("/api/events", HTTP_GET, [&events](AsyncWebServerRequest *req){
-        String j = events.toJson();
-        req->send(200, "application/json", j);
-    });
+  // Return JSON containing all events
+  server.on("/api/events", HTTP_GET, [&events](AsyncWebServerRequest *req)
+  {
+      String j = events.toJson();
+      req->send(200, "application/json", j);
+  });
 
-    // Delete event by tagId (query)
-    server.on("/api/event/delete", HTTP_GET, [&events](AsyncWebServerRequest *req){
-        if (!req->hasParam("tagId")) { req->send(400, "text/plain", "missing tagId"); return; }
-        String t = req->getParam("tagId")->value();
-        uint32_t tag = (uint32_t) strtoul(t.c_str(), nullptr, 10);
-        if (events.remove(tag)) req->send(200, "text/plain", "ok"); else req->send(404, "text/plain", "not found");
-    });
+  // Delete event by tagId (query)
+  server.on("/api/event/delete", HTTP_GET, [&events](AsyncWebServerRequest *req)
+  {
+      if (!req->hasParam("tagId")) 
+      { 
+        req->send(400, "text/plain", "missing tagId"); 
+        return; 
+      }
+      String t = req->getParam("tagId")->value();
+      uint32_t tag = (uint32_t) strtoul(t.c_str(), nullptr, 10);
+      if (events.remove(tag)) req->send(200, "text/plain", "ok"); else req->send(404, "text/plain", "not found");
+  });
 
-    // Update event via query params: tagId (required), optional title, day, month, year, alarm0/1/2
-    server.on("/api/event/update", HTTP_GET, [&events](AsyncWebServerRequest *req){
-        if (!req->hasParam("tagId")) { req->send(400, "text/plain", "missing tagId"); return; }
-        String t = req->getParam("tagId")->value();
-        uint32_t tag = (uint32_t) strtoul(t.c_str(), nullptr, 10);
-        // title
-        if (req->hasParam("title")) {
-            String title = req->getParam("title")->value();
-            // decode URI component
-            // simple replace for + and %20
-            events.setTitle(tag, title);
-        }
-        // date
-        if (req->hasParam("day") && req->hasParam("month") && req->hasParam("year")) {
-            uint8_t day = (uint8_t) atoi(req->getParam("day")->value().c_str());
-            uint8_t month = (uint8_t) atoi(req->getParam("month")->value().c_str());
-            uint16_t year = (uint16_t) atoi(req->getParam("year")->value().c_str());
-            events.updateDate(tag, day, month, year);
-        }
-        // alarms
-        for (int i = 0; i < (int)Event::MAX_ALARMS; ++i) {
-            String name = String("alarm") + String(i);
-            if (req->hasParam(name.c_str())) {
-                int val = atoi(req->getParam(name.c_str())->value().c_str());
-                events.setAlarm(tag, i, (int16_t)val);
-            }
-        }
-
-        req->send(200, "text/plain", "ok");
-    });
+  // Update event via query params: tagId (required), optional title, day, month, year, alarm0/1/2
+  server.on("/api/event/update", HTTP_GET, [&events](AsyncWebServerRequest *req)
+  {
+    if (!req->hasParam("tagId"))
+    { 
+      req->send(400, "text/plain", "missing tagId"); 
+      return; 
+    }
+    String t = req->getParam("tagId")->value();
+    uint32_t tag = (uint32_t) strtoul(t.c_str(), nullptr, 10);
+    // title
+    if (req->hasParam("title")) 
+    {
+      String title = req->getParam("title")->value();
+      // decode URI component
+      // simple replace for + and %20
+      events.setTitle(tag, title);
+    }
+    // date
+    if (req->hasParam("day") && req->hasParam("month") && req->hasParam("year")) 
+    {
+      uint8_t day = (uint8_t) atoi(req->getParam("day")->value().c_str());
+      uint8_t month = (uint8_t) atoi(req->getParam("month")->value().c_str());
+      uint16_t year = (uint16_t) atoi(req->getParam("year")->value().c_str());
+      events.updateDate(tag, day, month, year);
+    }
+    // alarms
+    for (int i = 0; i < (int)Event::MAX_ALARMS; ++i) 
+    {
+      String name = String("alarm") + String(i);
+      if (req->hasParam(name.c_str())) 
+      {
+          int val = atoi(req->getParam(name.c_str())->value().c_str());
+          events.setAlarm(tag, i, (int16_t)val);
+      }
+    }
+    req->send(200, "text/plain", "ok");
+  });
 }
 
-void EventListWebUi::notifyWebUiClients(void)
+void EventListWebUi::notifyClients(void)
 {
-    String json = _events->toJson();
-    //_server->sendNotify("events_update", json);
+  String json = _events->toJson();
+  Serial.printf("Notifying %u WebSocket clients\n", _ws.count());
+  Serial.println(json);
+  _ws.textAll(json);
+}
 
-
+void EventListWebUi::onWsEvent(AsyncWebSocket * server, AsyncWebSocketClient * client,
+                   AwsEventType type, void * arg, uint8_t *data, size_t len) 
+{
+  if(type == WS_EVT_CONNECT)
+  {
+      Serial.printf("Client connected: %u\n", client->id());
+      notifyClients(); // send event list upon new connection
+  }
 }
