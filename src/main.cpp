@@ -10,6 +10,7 @@
 #include "time.h"
 #include "esp_sntp.h"
 #include "web_ui.h"
+#include <LittleFS.h>
 
 
 const char* apSSID = "CountDownEvent";
@@ -234,8 +235,12 @@ void setup()
 
   // Initialize WiFi
   wifiManager.Begin();
-  
+   
+
+  LittleFS.begin();  
+  wifiManager.getServer().serveStatic("/", LittleFS, "/").setDefaultFile("index.html");
   setupWebUiRoutes(wifiManager.getServer(), events);
+
 
   // Initial NTP configuration
   configTime(3600, 3600, "pool.ntp.org", "time.nist.gov", "time.google.com"); // UTC+1 offset, daylight saving enabled
