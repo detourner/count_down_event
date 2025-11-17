@@ -1,7 +1,19 @@
 #include "web_ui.h"
 #include <ArduinoJson.h>
 
-void setupWebUiRoutes(AsyncWebServer &server, EventList &events)
+EventListWebUi:: EventListWebUi()
+{
+}
+
+void EventListWebUi::begin(AsyncWebServer &server, EventList &events)
+{
+  _server = &server;
+  _events = &events;
+  setupWebUiRoutes(server, events);
+
+}
+
+void  EventListWebUi::setupWebUiRoutes(AsyncWebServer &server, EventList &events)
 {
     // Return JSON containing all events
     server.on("/api/events", HTTP_GET, [&events](AsyncWebServerRequest *req){
@@ -47,4 +59,12 @@ void setupWebUiRoutes(AsyncWebServer &server, EventList &events)
 
         req->send(200, "text/plain", "ok");
     });
+}
+
+void EventListWebUi::notifyWebUiClients(void)
+{
+    String json = _events->toJson();
+    //_server->sendNotify("events_update", json);
+
+
 }

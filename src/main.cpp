@@ -17,6 +17,7 @@ const char* apSSID = "CountDownEvent";
 const char* apPassword = "12345678";
 
 WifiManager wifiManager(apSSID, apPassword);
+EventListWebUi webUi;
 
 #define PinLed 2
 #define PinWinkLed 32
@@ -239,7 +240,8 @@ void setup()
 
   LittleFS.begin();  
   wifiManager.getServer().serveStatic("/", LittleFS, "/").setDefaultFile("index.html");
-  setupWebUiRoutes(wifiManager.getServer(), events);
+  webUi.begin(wifiManager.getServer(), events);
+
 
 
   // Initial NTP configuration
