@@ -147,8 +147,8 @@ void tagCallback(uint32_t tag_id)
 
   if (events.getEvent(tag_id, evt))
   {
-    evt.setOnDesk(true); // Mark event as on desk
-    evt.acknowledgeAlarms(); // Acknowledge any due alarms
+    events.setOnDesk(tag_id); // Mark event as on desk
+    events.acknowledgeAlarms(tag_id);  // Acknowledge any due alarms
     updateActiveAlarmsWinks();  // Update winks when tag is removed
     nixiesManager.newEvent(); // Reset timeout !
 

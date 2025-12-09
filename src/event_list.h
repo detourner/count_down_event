@@ -50,8 +50,23 @@ public:
     // Configure an alarm for an event. index 0..MAX_ALARMS-1
     bool setAlarm(uint32_t tagId, size_t index, int16_t daysBefore);
 
+    void acknowledgeAlarms(uint32_t tagId)
+    {
+        int idx = findIndex(tagId);
+        if (idx < 0) return;
+        _events[idx].acknowledgeAlarms();
+        saveEvent(_events[idx], idx);
+    }
+
+    void setOnDesk(uint32_t tagId)
+    {
+        int idx = findIndex(tagId);
+        if (idx < 0) return;
+        _events[idx].setOnDesk(true);
+    }
+
     void anyEventOnDesk();
-    
+
     // Number of stored events
     size_t count() const { return _count; }
 
