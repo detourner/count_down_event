@@ -82,6 +82,10 @@ public:
     int16_t getAlarmDays(size_t index) const;
     bool isAlarmAcknowledged(size_t index) const;
 
+    // On-desk status
+    void setOnDesk(bool onDesk) { _isOnDesk = onDesk; }
+    bool isOnDesk() const { return _isOnDesk; }
+
 private:
     // Convert date to total days since epoch (2000-01-01)
     uint32_t dateToDays() const;
@@ -103,6 +107,7 @@ private:
     
     // Current status of the event
     eventStatus_t _status;
+    bool _isOnDesk = false;
 };
 
 #endif

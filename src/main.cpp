@@ -119,6 +119,8 @@ void tagCallback(uint32_t tag_id)
   {
       Serial.println("Tag removed");
       nixies.SetBlink(1000,0); // turn off display
+      events.anyEventOnDesk(); // Clear on-desk status for all events
+      webUi.notifyClients(); // Notify web clients
       return;
   }
 
@@ -145,6 +147,7 @@ void tagCallback(uint32_t tag_id)
 
   if (events.getEvent(tag_id, evt))
   {
+    evt.setOnDesk(true); // Mark event as on desk
     evt.acknowledgeAlarms(); // Acknowledge any due alarms
     updateActiveAlarmsWinks();  // Update winks when tag is removed
     nixiesManager.newEvent(); // Reset timeout !
@@ -174,6 +177,7 @@ void tagCallback(uint32_t tag_id)
         Serial.println("Event status: UNKNOWN");
         break;
     }
+    webUi.notifyClients(); // Notify web clients
   }
   else
   {

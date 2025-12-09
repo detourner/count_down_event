@@ -50,6 +50,8 @@ public:
     // Configure an alarm for an event. index 0..MAX_ALARMS-1
     bool setAlarm(uint32_t tagId, size_t index, int16_t daysBefore);
 
+    void anyEventOnDesk();
+    
     // Number of stored events
     size_t count() const { return _count; }
 
@@ -61,6 +63,8 @@ public:
 
     // Save current events to NVS storage
     bool save() const;
+
+    
 
     // Count total number of active alarms across all events
     size_t countActiveAlarms() const;
@@ -74,6 +78,7 @@ public:
     void saveEvent(const Event& event, size_t index) const;
     bool loadEvent(size_t index, Event& event) const;
     String makeNvsKey(size_t index) const;
+
 
     Event _events[EVENTLIST_MAX_EVENTS];
     bool  _used[EVENTLIST_MAX_EVENTS];

@@ -21,66 +21,138 @@
 
     <script>
         // Connexion WebSocket à l'ESP32
-        const ws = new WebSocket(`ws://${location.hostname}/ws`);
+       // Connexion WebSocket à l'ESP32
+const ws = new WebSocket(`ws://${location.hostname}/ws`);
 
-        ws.onmessage = (event) => {
-            const events = JSON.parse(event.data);
-            renderAccordion(events);
-        };
+ws.onmessage = (event) => {
+    // 1. Parser le JSON entier
+    const fullData = JSON.parse(event.data);
+    
+    // 2. Extraire le tableau "events"
+    const events = fullData.events; 
+    
+    // S'assurer que 'events' est un tableau avant de le rendre
+    if (Array.isArray(events)) {
+        renderAccordion(events);
+    }
+};
 
-        // Génération dynamique de l'accordion
-        function renderAccordion(events) {
-            const container = document.getElementById('eventsAccordion');
-            container.innerHTML = ""; // Efface l’ancien contenu
+// Génération dynamique de l'accordion
+function renderAccordion(events) {
+    const container = document.getElementById('eventsAccordion');
+    container.innerHTML = ""; // Efface l’ancien contenu
 
-            events.forEach((ev, index) => {
-                const id = `event${index}`;
+    events.forEach((ev, index) => {
+        const id = `event${index}`;
+        
+        // --- NOUVELLE LOGIQUE DE MAPPING ---
+        
+        // 1. Utiliser 'title' pour le nom
+        const eventName = ev.title && ev.title.length > 0 ? ev.title : ev.tagId;
+        
+        // 2. Créer une date/heure (ici, nous affichons la date)
+        let eventTime = 'Date non spécifiée';
+        if (ev.day > 0 && ev.month > 0 && ev.year > 0) {
+            // Mise en forme simple J/M/AAAA. Attention: le mois est 0-indexé si c'est un objet Date
+            // Ici on assume des valeurs brutes 1-12
+            eventTime = `${ev.day.toString().padStart(2, '0')}/${ev.month.toString().padStart(2, '0')}/${ev.year}`;
+        }
+        
+        // --- FIN LOGIQUE DE MAPPING ---
 
-                const html = `
-                <div class="accordion-item">
-                    <h2 class="accordion-header" id="heading-${id}">
-                        <button class="accordion-button collapsed"
-                                type="button"
-                                data-bs-toggle="collapse"
-                                data-bs-target="#collapse-${id}"
-                                aria-expanded="false"
-                                aria-controls="collapse-${id}">
-                            ${ev.time} – ${ev.name}
-                        </button>
-                    </h2>
+        const html = `
+        <div class="accordion-item">
+            <h2 class="accordion-header" id="heading-${id}">
+                <button class="accordion-button collapsed"
+                        type="button"
+                        data-bs-toggle="collapse"
+                        data-bs-target="#collapse-${id}"
+                        aria-expanded="false"
+                        aria-controls="collapse-${id}">
+                    ${eventName}
+                </button>
+            </h2>
 
-                    <div id="collapse-${id}"
-                         class="accordion-collapse collapse"
-                         aria-labelledby="heading-${id}"
-                         data-bs-parent="#eventsAccordion">
-                        <div class="accordion-body">
-                            <strong>Évènement :</strong> ${ev.name}<br>
-                            <strong>Heure :</strong> ${ev.time}<br><br>
-
-                            <!-- Exemple de contenu modifiable -->
-                            <button class="btn btn-primary btn-sm" onclick="editEvent(${index})">
-                                Modifier
-                            </button>
-                            <button class="btn btn-danger btn-sm" onclick="deleteEvent(${index})">
-                                Supprimer
-                            </button>
+            <div id="collapse-${id}"
+                 class="accordion-collapse collapse"
+                 aria-labelledby="heading-${id}"
+                 data-bs-parent="#eventsAccordion">
+                <div class="accordion-body">
+                    <form class="event-form" onsubmit="updateEvent(event, ${ev.tagId})" method="get" action="/api/event/update">
+                        <input type="hidden" name="tagId" value="${ev.tagId}">
+                        <div class="mb-2">
+                            <label class="form-label"><strong>Évènement :</strong>
+                                <input name="title" class="form-control form-control-sm" value="${(ev.title||'').replace(/"/g,'&quot;')}">
+                            </label>
                         </div>
-                    </div>
+
+                        <div class="mb-2">
+                            <label class="form-label"><strong>Date :</strong>
+                                <input id="eventDate-${ev.tagId}" name="eventDate" type="date" required class="form-control form-control-sm" value="${(ev.year && ev.month && ev.day)? `${ev.year}-${String(ev.month).padStart(2,'0')}-${String(ev.day).padStart(2,'0')}` : ''}">
+                            </label>
+                        </div>
+
+                        <div class="mb-2"><small><strong>ID (Tag) :</strong> ${ev.tagId}</small></div>
+
+                        <div class="d-flex gap-2">
+                            <button type="submit" class="btn btn-primary btn-sm">Update</button>
+                            <button type="button" class="btn btn-danger btn-sm" onclick="deleteEvent(${ev.tagId})">Supprimer</button>
+                        </div>
+                    </form>
                 </div>
-                `;
+            </div>
+        </div>
+        `;
 
-                container.insertAdjacentHTML("beforeend", html);
-            });
-        }
+        container.insertAdjacentHTML("beforeend", html);
+    });
+}
 
-        // Fonctions "fake" (à relier plus tard)
-        function editEvent(i) {
-            alert("Éditer l'évènement #" + i);
-        }
+// Les fonctions de contrôle doivent maintenant utiliser le tagId pour correspondre au C++
+function updateEvent(evt, tagId) {
+    evt.preventDefault();
+    const form = evt.target;
+    const fd = new FormData(form);
 
-        function deleteEvent(i) {
-            alert("Supprimer l'évènement #" + i);
+    // If a single date field is present, convert to day/month/year for backend
+    if (fd.has('eventDate')) {
+        const dateVal = fd.get('eventDate'); // format YYYY-MM-DD
+        if (dateVal) {
+            const parts = String(dateVal).split('-');
+            if (parts.length === 3) {
+                const [y, m, d] = parts;
+                fd.set('day', d.replace(/^0+/, '') || '0');
+                fd.set('month', m.replace(/^0+/, '') || '0');
+                fd.set('year', y);
+            }
         }
+        fd.delete('eventDate');
+    }
+
+    const params = new URLSearchParams(fd).toString();
+    fetch('/api/event/update?' + params, { method: 'GET' })
+        .then(res => {
+            if (res.ok) {
+                location.reload();
+            } else {
+                alert('Update failed');
+            }
+        })
+        .catch(() => alert('Update failed'));
+}
+
+function deleteEvent(tagId) {
+    if (!confirm(`Supprimer l'évènement avec Tag ID: ${tagId} ?`)) return;
+    fetch('/api/event/delete?tagId=' + encodeURIComponent(tagId), { method: 'GET' })
+        .then(res => {
+            if (res.ok) {
+                location.reload();
+            } else {
+                alert('Delete failed');
+            }
+        })
+        .catch(() => alert('Delete failed'));
+}
     </script>
 
 </body>

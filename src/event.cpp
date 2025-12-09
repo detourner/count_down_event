@@ -73,6 +73,7 @@ String Event::toString() const
     doc["month"] = _month;
     doc["year"] = _year;
     doc["title"] = _title;
+    doc["onDesk"] = _isOnDesk;
     
     // Serialize alarms array
     JsonArray alarmsArray = doc["alarms"].to<JsonArray>();
@@ -303,5 +304,7 @@ bool Event::isAlarmAcknowledged(size_t index) const
     if (index >= MAX_ALARMS) return true;
     return _alarmAck[index];
 }
+
+
 
 // New status field default handling: if date not set -> NO_CONFIGURED

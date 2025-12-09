@@ -290,3 +290,11 @@ String EventList::toJson() const
     serializeJson(doc, result);
     return result;
 }
+
+void EventList::anyEventOnDesk()
+{
+    for (size_t i = 0; i < EVENTLIST_MAX_EVENTS; i++)
+    {
+        _events[i].setOnDesk(false);
+    }
+}
