@@ -4,12 +4,14 @@
 #include <ESPAsyncWebServer.h>
 #include "event_list.h"
 
+typedef void (*CallbackTypeWebUi)(void);
+
 class EventListWebUi
 {
     public:
         EventListWebUi();
 
-        void begin(AsyncWebServer &server, EventList &events);
+        void begin(AsyncWebServer &server, EventList &events, CallbackTypeWebUi callback = nullptr);
        
 
         // Register web UI routes on the provided server instance and bind to given EventList
@@ -25,6 +27,8 @@ class EventListWebUi
         AsyncWebServer* _server = nullptr;
         EventList* _events = nullptr;
         AsyncWebSocket _ws{"/ws"};
+
+        CallbackTypeWebUi _callback;
 
 
 };

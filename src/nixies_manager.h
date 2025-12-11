@@ -46,7 +46,6 @@ class NixiesManager
         int           _posPrevTimeOut;
         int           _posPrevBrightness;
 
-
         CallbackTypeNixiesManager _callback;
 
 

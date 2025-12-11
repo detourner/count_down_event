@@ -2,7 +2,8 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <title>Events Accordion</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Count Down Event</title>
 
     <!-- Bootswatch Flatly -->
     <link href="https://cdn.jsdelivr.net/npm/bootswatch@5.3.8/dist/flatly/bootstrap.min.css" rel="stylesheet">
@@ -18,6 +19,7 @@
         .accordion-item.on-desk .accordion-header .accordion-button.collapsed {
             background-color: rgba(255, 87, 34, 0.06);
         }
+       
     </style>
 </head>
 
@@ -32,135 +34,151 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js"></script>
 
     <script>
-        // Connexion WebSocket à l'ESP32
+
        // Connexion WebSocket à l'ESP32
-const ws = new WebSocket(`ws://${location.hostname}/ws`);
+        const ws = new WebSocket(`ws://${location.hostname}/ws`);
 
-ws.onmessage = (event) => {
-    // 1. Parser le JSON entier
-    const fullData = JSON.parse(event.data);
-    
-    // 2. Extraire le tableau "events"
-    const events = fullData.events; 
-    
-    // S'assurer que 'events' est un tableau avant de le rendre
-    if (Array.isArray(events)) {
-        renderAccordion(events);
-    }
-};
+        ws.onmessage = (event) => {
+            // 1. Parser le JSON entier
+            const fullData = JSON.parse(event.data);
+            
+            // 2. Extraire le tableau "events"
+            const events = fullData.events; 
+            
+            // S'assurer que 'events' est un tableau avant de le rendre
+            if (Array.isArray(events)) {
+                renderAccordion(events);
+            }
+        };
 
-// Génération dynamique de l'accordion
-function renderAccordion(events) {
-    const container = document.getElementById('eventsAccordion');
-    container.innerHTML = ""; // Efface l’ancien contenu
+        // Génération dynamique de l'accordion
+        function renderAccordion(events) {
+            const container = document.getElementById('eventsAccordion');
+            container.innerHTML = ""; // Efface l’ancien contenu
 
-    events.forEach((ev, index) => {
-        const id = `event${index}`;
-        ev.onDesk = ev.onDesk || false; // Valeur par défaut si absente
-        
-        // 1. Utiliser 'title' pour le nom
-        const eventName = ev.title && ev.title.length > 0 ? ev.title : ev.tagId;
-        
-        // 2. Créer une date/heure (ici, nous affichons la date)
-        let eventTime = 'Date non spécifiée';
-        if (ev.day > 0 && ev.month > 0 && ev.year > 0) {
-            // Mise en forme simple J/M/AAAA. Attention: le mois est 0-indexé si c'est un objet Date
-            // Ici on assume des valeurs brutes 1-12
-            eventTime = `${ev.day.toString().padStart(2, '0')}/${ev.month.toString().padStart(2, '0')}/${ev.year}`;
-        }
+            events.forEach((ev, index) => {
+                const id = `event${index}`;
+                ev.onDesk = ev.onDesk || false; // Valeur par défaut si absente
+                
+                // 1. Utiliser 'title' pour le nom
+                const eventName = ev.title && ev.title.length > 0 ? ev.title : ev.tagId;
+                
+                // 2. Créer une date/heure (ici, nous affichons la date)
+                let eventTime = 'Date non spécifiée';
+                if (ev.day > 0 && ev.month > 0 && ev.year > 0) {
+                    // Mise en forme simple J/M/AAAA. Attention: le mois est 0-indexé si c'est un objet Date
+                    // Ici on assume des valeurs brutes 1-12
+                    eventTime = `${ev.day.toString().padStart(2, '0')}/${ev.month.toString().padStart(2, '0')}/${ev.year}`;
+                }
 
-        const html = `
-        <div class="accordion-item ${ev.onDesk ? 'on-desk' : ''}">
-            <h2 class="accordion-header" id="heading-${id}">
-                <button class="accordion-button collapsed"
-                        type="button"
-                        data-bs-toggle="collapse"
-                        data-bs-target="#collapse-${id}"
-                        aria-expanded="false"
-                        aria-controls="collapse-${id}">
-                    ${eventName}
-                </button>
-            </h2>     
+                const html = `
+                <div class="accordion-item ${ev.onDesk ? 'on-desk' : ''}">
+                    <h2 class="accordion-header" id="heading-${id}">
+                        <button class="accordion-button collapsed"
+                                type="button"
+                                data-bs-toggle="collapse"
+                                data-bs-target="#collapse-${id}"
+                                aria-expanded="false"
+                                aria-controls="collapse-${id}">
+                            ${eventName}
+                        </button>
+                    </h2>     
 
-            <div id="collapse-${id}"
-                 class="accordion-collapse collapse"
-                 aria-labelledby="heading-${id}"
-                 data-bs-parent="#eventsAccordion">
-                <div class="accordion-body">
-                    <form class="event-form" onsubmit="updateEvent(event, ${ev.tagId})" method="get" action="/api/event/update">
-                        <input type="hidden" name="tagId" value="${ev.tagId}">
-                        <div class="mb-2">
-                            <label class="form-label"><strong>Évènement :</strong>
-                                <input name="title" class="form-control form-control-sm" value="${(ev.title||'').replace(/"/g,'&quot;')}">
-                            </label>
+                    <div id="collapse-${id}"
+                        class="accordion-collapse collapse"
+                        aria-labelledby="heading-${id}"
+                        data-bs-parent="#eventsAccordion">
+                        <div class="accordion-body">
+                            <form class="event-form" onsubmit="updateEvent(event, ${ev.tagId})" method="get" action="/api/event/update">
+                                <input type="hidden" name="tagId" value="${ev.tagId}">
+                                <div class="mb-2">
+                                    <label class="form-label"><strong>Évènement :</strong>
+                                        <input name="title" class="form-control form-control-sm" value="${(ev.title||'').replace(/"/g,'&quot;')}">
+                                    </label>
+                                </div>
+
+                                <div class="mb-2">
+                                    <label class="form-label"><strong>Date :</strong>
+                                        <input id="eventDate-${ev.tagId}" name="eventDate" type="date" required class="form-control form-control-sm" value="${(ev.year && ev.month && ev.day)? `${ev.year}-${String(ev.month).padStart(2,'0')}-${String(ev.day).padStart(2,'0')}` : ''}">
+                                    </label>
+                                </div>
+
+                                <div class="mb-2">
+                                    <strong>Alarmes :</strong>
+                                </div>
+
+                                <div class="mb-2 d-flex gap-3 align-items-center">
+                                    <label class="d-flex align-items-center">
+                                        1: <input name="alarm0" type="number" min="-1" class="form-control form-control-sm ms-1" value="${ev.alarms && ev.alarms[0] ? (ev.alarms[0].daysBefore || -1) : -1}" style="width: 80px;">
+                                    </label>
+                                    <label class="d-flex align-items-center">
+                                        2: <input name="alarm1" type="number" min="-1" class="form-control form-control-sm ms-1" value="${ev.alarms && ev.alarms[1] ? (ev.alarms[1].daysBefore || -1) : -1}" style="width: 80px;">
+                                    </label>
+                                    <label class="d-flex align-items-center">
+                                        3: <input name="alarm2" type="number" min="-1" class="form-control form-control-sm ms-1" value="${ev.alarms && ev.alarms[2] ? (ev.alarms[2].daysBefore || -1) : -1}" style="width: 80px;">
+                                    </label>
+                                </div>
+
+                                <div class="mb-2"><small><strong>ID (Tag) :</strong> ${ev.tagId}</small></div>
+
+                                <div class="d-flex gap-2">
+                                    <button type="submit" class="btn btn-primary btn-sm">Enregister</button>
+                                    <button type="button" class="btn btn-danger btn-sm" onclick="deleteEvent(${ev.tagId})">Supprimer</button>
+                                </div>
+                            </form>
                         </div>
-
-                        <div class="mb-2">
-                            <label class="form-label"><strong>Date :</strong>
-                                <input id="eventDate-${ev.tagId}" name="eventDate" type="date" required class="form-control form-control-sm" value="${(ev.year && ev.month && ev.day)? `${ev.year}-${String(ev.month).padStart(2,'0')}-${String(ev.day).padStart(2,'0')}` : ''}">
-                            </label>
-                        </div>
-
-                        <div class="mb-2"><small><strong>ID (Tag) :</strong> ${ev.tagId}</small></div>
-
-                        <div class="d-flex gap-2">
-                            <button type="submit" class="btn btn-primary btn-sm">Update</button>
-                            <button type="button" class="btn btn-danger btn-sm" onclick="deleteEvent(${ev.tagId})">Supprimer</button>
-                        </div>
-                    </form>
+                    </div>
                 </div>
-            </div>
-        </div>
-        `;
+                `;
 
-        container.insertAdjacentHTML("beforeend", html);
-    });
-}
-
-function updateEvent(evt, tagId) {
-    evt.preventDefault();
-    const form = evt.target;
-    const fd = new FormData(form);
-
-    // If a single date field is present, convert to day/month/year for backend
-    if (fd.has('eventDate')) {
-        const dateVal = fd.get('eventDate'); // format YYYY-MM-DD
-        if (dateVal) {
-            const parts = String(dateVal).split('-');
-            if (parts.length === 3) {
-                const [y, m, d] = parts;
-                fd.set('day', d.replace(/^0+/, '') || '0');
-                fd.set('month', m.replace(/^0+/, '') || '0');
-                fd.set('year', y);
-            }
+                container.insertAdjacentHTML("beforeend", html);
+            });
         }
-        fd.delete('eventDate');
-    }
 
-    const params = new URLSearchParams(fd).toString();
-    fetch('/api/event/update?' + params, { method: 'GET' })
-        .then(res => {
-            if (res.ok) {
-                location.reload();
-            } else {
-                alert('Update failed');
-            }
-        })
-        .catch(() => alert('Update failed'));
-}
+        function updateEvent(evt, tagId) {
+            evt.preventDefault();
+            const form = evt.target;
+            const fd = new FormData(form);
 
-function deleteEvent(tagId) {
-    if (!confirm(`Supprimer l'évènement avec Tag ID: ${tagId} ?`)) return;
-    fetch('/api/event/delete?tagId=' + encodeURIComponent(tagId), { method: 'GET' })
-        .then(res => {
-            if (res.ok) {
-                location.reload();
-            } else {
-                alert('Delete failed');
+            // If a single date field is present, convert to day/month/year for backend
+            if (fd.has('eventDate')) {
+                const dateVal = fd.get('eventDate'); // format YYYY-MM-DD
+                if (dateVal) {
+                    const parts = String(dateVal).split('-');
+                    if (parts.length === 3) {
+                        const [y, m, d] = parts;
+                        fd.set('day', d.replace(/^0+/, '') || '0');
+                        fd.set('month', m.replace(/^0+/, '') || '0');
+                        fd.set('year', y);
+                    }
+                }
+                fd.delete('eventDate');
             }
-        })
-        .catch(() => alert('Delete failed'));
-}
+
+            const params = new URLSearchParams(fd).toString();
+            fetch('/api/event/update?' + params, { method: 'GET' })
+                .then(res => {
+                    if (res.ok) {
+                        location.reload();
+                    } else {
+                        alert('Update failed');
+                    }
+                })
+                .catch(() => alert('Update failed'));
+        }
+
+        function deleteEvent(tagId) {
+            if (!confirm(`Supprimer l'évènement avec Tag ID: ${tagId} ?`)) return;
+            fetch('/api/event/delete?tagId=' + encodeURIComponent(tagId), { method: 'GET' })
+                .then(res => {
+                    if (res.ok) {
+                        location.reload();
+                    } else {
+                        alert('Delete failed');
+                    }
+                })
+                .catch(() => alert('Delete failed'));
+        }
     </script>
 
 </body>

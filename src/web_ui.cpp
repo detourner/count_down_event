@@ -5,10 +5,11 @@ EventListWebUi:: EventListWebUi()
 {
 }
 
-void EventListWebUi::begin(AsyncWebServer &server, EventList &events)
+void EventListWebUi::begin(AsyncWebServer &server, EventList &events, CallbackTypeWebUi callback)
 {
   _server = &server;
   _events = &events;
+  _callback = callback;
   setupWebUiRoutes(server, events);
 
    _ws.onEvent([this](AsyncWebSocket * server, AsyncWebSocketClient * client,
@@ -32,7 +33,7 @@ void  EventListWebUi::setupWebUiRoutes(AsyncWebServer &server, EventList &events
   });
 
   // Delete event by tagId (query)
-  server.on("/api/event/delete", HTTP_GET, [&events](AsyncWebServerRequest *req)
+  server.on("/api/event/delete", HTTP_GET, [&events, this](AsyncWebServerRequest *req)
   {
       if (!req->hasParam("tagId")) 
       { 
@@ -42,10 +43,14 @@ void  EventListWebUi::setupWebUiRoutes(AsyncWebServer &server, EventList &events
       String t = req->getParam("tagId")->value();
       uint32_t tag = (uint32_t) strtoul(t.c_str(), nullptr, 10);
       if (events.remove(tag)) req->send(200, "text/plain", "ok"); else req->send(404, "text/plain", "not found");
+      if(this->_callback) 
+      {
+        this->_callback();
+      }
   });
 
   // Update event via query params: tagId (required), optional title, day, month, year, alarm0/1/2
-  server.on("/api/event/update", HTTP_GET, [&events](AsyncWebServerRequest *req)
+  server.on("/api/event/update", HTTP_GET, [&events, this](AsyncWebServerRequest *req)
   {
     if (!req->hasParam("tagId"))
     { 
@@ -81,6 +86,9 @@ void  EventListWebUi::setupWebUiRoutes(AsyncWebServer &server, EventList &events
       }
     }
     req->send(200, "text/plain", "ok");
+    if(this->_callback) {
+        this->_callback();
+    }
   });
 }
 

@@ -9,9 +9,11 @@ void NixiesManager::Setup(uint32_t timeOut, uint32_t maxTimeOut, int brightness,
     
     _callback = callback;
     _posPrevTimeOut = timeOut;
+
     _posPrevBrightness = brightness;    
 
     _setTimeOut = false;
+    _setBrightness = false;
 }
 
 void NixiesManager::CyclTask(int rotPosTimeOut, int rotPosBrightness)
@@ -24,11 +26,10 @@ void NixiesManager::CyclTask(int rotPosTimeOut, int rotPosBrightness)
     _currentTime += (time - _prevTime);
     _prevTime = time;
 
-    //define timeout
-    if(_setTimeOut)
+    
+    if(_setTimeOut) //define timeout in progress
     {
-        //reset timer
-        if(rotPosTimeOut != _posPrevTimeOut)
+        if(rotPosTimeOut != _posPrevTimeOut) // rotary encoder has been moved
         {
             _currentTime = 0 ;
             _posPrevTimeOut = rotPosTimeOut;
@@ -38,8 +39,9 @@ void NixiesManager::CyclTask(int rotPosTimeOut, int rotPosBrightness)
                 _callback(_posPrevTimeOut, TIMEOUT_MODE_TIMEOUT);
             }
         }
-        if(_currentTime > 5000)
+        if(_currentTime > 5000 || _newEvent) // rotary encode has not moved since 5sec or new event
         {
+            // end of define timeout sequence
             _setTimeOut = false;
             _currentTime = 0;
             _setTimeOutDuration = rotPosTimeOut * 1000;
@@ -50,9 +52,9 @@ void NixiesManager::CyclTask(int rotPosTimeOut, int rotPosBrightness)
             }
         }
     }
-    else if (_setBrightness)
+    else if (_setBrightness) // define brightness in progress
     {
-        if(rotPosBrightness != _posPrevBrightness)
+        if(rotPosBrightness != _posPrevBrightness) // rotary encoder has been moved
         {
             _currentTime = 0 ;
             _posPrevBrightness = rotPosBrightness;
@@ -61,8 +63,9 @@ void NixiesManager::CyclTask(int rotPosTimeOut, int rotPosBrightness)
                 _callback(rotPosBrightness, TIMEOUT_MODE_BRIGHTNESS);
             }
         }
-        if(_currentTime > 5000)
+        if(_currentTime > 5000 || _newEvent) // rotary encode has not moved since 5sec or new event
         {
+            // end of define brightness sequence
             _setBrightness = false;
             _currentTime = 0;
             
@@ -72,30 +75,26 @@ void NixiesManager::CyclTask(int rotPosTimeOut, int rotPosBrightness)
             }
         }
     }
-    else
+    else // idle 
     {
         if(rotPosTimeOut != _posPrevTimeOut)
         {
+            // start define timeout sequence 
             _setTimeOut = true;
             _currentTime = 0 ;
             _posPrevTimeOut = rotPosTimeOut;
         }
         else if(rotPosBrightness != _posPrevBrightness)
         {
+           // start define brightness sequence
             _setBrightness = true;
             _currentTime = 0 ;
             _posPrevBrightness = rotPosBrightness;
         }
 
-        if(_newEvent)
-        {
-            _newEvent = false;
-            _currentTime = 0;
-            _switchOn = true;
-        }
-
         if(_currentTime > _setTimeOutDuration && _switchOn == true)
         {
+            // is time to turn off display
             _switchOn = false;
             _currentTime = _setTimeOutDuration + 50;
 
@@ -103,7 +102,16 @@ void NixiesManager::CyclTask(int rotPosTimeOut, int rotPosBrightness)
             {
                 _callback(0, TIEMOUT_IS_ACTIVE);
             }
-
         }
+    }
+
+    if(_newEvent)
+    {
+        // a new event required to update display and abord sequences (brightness or timeout)
+        _newEvent = false;
+        _currentTime = 0;
+        _switchOn = true;
+        _setBrightness = false;
+        _setTimeOut = false;
     }
 }

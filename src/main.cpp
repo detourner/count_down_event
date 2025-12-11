@@ -112,8 +112,10 @@ void nixieManagerCallback(uint32_t dispValue, nixiesMode_t mode)
   }
 }
 
-void tagCallback(uint32_t tag_id)
+
+void UpdateDipslay(uint32_t tag_id)
 {
+
   // If tag_id is 0, no tag is present (just removed)
   if (tag_id == 0)
   {
@@ -166,7 +168,7 @@ void tagCallback(uint32_t tag_id)
       case Event::EVENT_STATUS_IN_PROGRESS:
         Serial.println("Event status: IN_PROGRESS");
         nixies.DispValue(daysLeft);
-        nixies.SetBlink(0,0); // no blink
+        nixies.SetBlink(1000,100); // no blink
         break;
       case Event::EVENT_STATUS_END:
         Serial.println("Event status: END");
@@ -183,6 +185,20 @@ void tagCallback(uint32_t tag_id)
   {
     Serial.println("Error retrieving or creating event.");
   }
+}
+
+
+uint32_t currentTagID = 0;
+
+void webUiCallback()
+{
+  UpdateDipslay(currentTagID);
+}
+
+void tagCallback(uint32_t tag_id)
+{
+  currentTagID = tag_id;
+  UpdateDipslay(tag_id);
 }
 
 void setup()
@@ -205,9 +221,6 @@ void setup()
 
   nixies.Setup();
   nixies.SetBrightness(savedBrightness);
-  nixies.SetBlink(1000, 50); // blink every 1s with 50% duty cycle
-  nixies.DispValue(999);
-
 
   // Rotary Encoder for Display Duration. Define limits and initial value.
   // The duration is in seconds.
@@ -235,21 +248,21 @@ void setup()
   wink_led.Setup(PinWinkLed);
   wink_led.setWinks( 0 );
   
-
-  tag.Setup(&tagCallback);
-
   // Initialize WiFi
   wifiManager.Begin();
    
 
   LittleFS.begin();  
   wifiManager.getServer().serveStatic("/", LittleFS, "/").setDefaultFile("index.html");
-  webUi.begin(wifiManager.getServer(), events);
+  webUi.begin(wifiManager.getServer(), events, webUiCallback);
 
 
 
   // Initial NTP configuration
   configTime(3600, 3600, "pool.ntp.org", "time.nist.gov", "time.google.com"); // UTC+1 offset, daylight saving enabled
+
+  tag.Setup(&tagCallback);
+
 }
 
 #define NTP_CHECK_INTERVAL 10000     // Check NTP status every 10 seconds
