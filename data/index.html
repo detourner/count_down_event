@@ -7,6 +7,18 @@
     <!-- Bootswatch Flatly -->
     <link href="https://cdn.jsdelivr.net/npm/bootswatch@5.3.8/dist/flatly/bootstrap.min.css" rel="stylesheet">
 
+    <style>
+        /* Highlight events placed on desk */
+        .accordion-item.on-desk .accordion-button {
+            border: 2px solid #ff5722; /* orange accent */
+            box-shadow: none;
+        }
+
+        /* Also highlight collapsed header when not expanded */
+        .accordion-item.on-desk .accordion-header .accordion-button.collapsed {
+            background-color: rgba(255, 87, 34, 0.06);
+        }
+    </style>
 </head>
 
 <body class="p-4">
@@ -44,8 +56,7 @@ function renderAccordion(events) {
 
     events.forEach((ev, index) => {
         const id = `event${index}`;
-        
-        // --- NOUVELLE LOGIQUE DE MAPPING ---
+        ev.onDesk = ev.onDesk || false; // Valeur par défaut si absente
         
         // 1. Utiliser 'title' pour le nom
         const eventName = ev.title && ev.title.length > 0 ? ev.title : ev.tagId;
@@ -57,11 +68,9 @@ function renderAccordion(events) {
             // Ici on assume des valeurs brutes 1-12
             eventTime = `${ev.day.toString().padStart(2, '0')}/${ev.month.toString().padStart(2, '0')}/${ev.year}`;
         }
-        
-        // --- FIN LOGIQUE DE MAPPING ---
 
         const html = `
-        <div class="accordion-item">
+        <div class="accordion-item ${ev.onDesk ? 'on-desk' : ''}">
             <h2 class="accordion-header" id="heading-${id}">
                 <button class="accordion-button collapsed"
                         type="button"
@@ -71,7 +80,7 @@ function renderAccordion(events) {
                         aria-controls="collapse-${id}">
                     ${eventName}
                 </button>
-            </h2>
+            </h2>     
 
             <div id="collapse-${id}"
                  class="accordion-collapse collapse"
@@ -108,7 +117,6 @@ function renderAccordion(events) {
     });
 }
 
-// Les fonctions de contrôle doivent maintenant utiliser le tagId pour correspondre au C++
 function updateEvent(evt, tagId) {
     evt.preventDefault();
     const form = evt.target;
