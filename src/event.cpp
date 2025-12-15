@@ -262,6 +262,7 @@ void Event::updateStatus()
 bool Event::setAlarm(size_t index, int16_t daysBefore)
 {
     if (index >= MAX_ALARMS) return false;
+    if(daysBefore < -1) daysBefore = -1;
     _alarmDays[index] = daysBefore;
     _alarmAck[index] = false;
     return true;
@@ -287,9 +288,16 @@ size_t Event::getActiveAlarmsCount() const
 
 void Event::acknowledgeAlarms()
 {
+    int32_t daysLeft = getDaysRemaining();
     for (size_t i = 0; i < MAX_ALARMS; ++i)
     {
-        _alarmAck[i] = true;
+        if (_alarmDays[i] >= 0 && !_alarmAck[i])
+        {
+            if (daysLeft <= _alarmDays[i])
+            {
+                _alarmAck[i] = true;
+            }
+        }
     }
 }
 
