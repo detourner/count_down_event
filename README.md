@@ -1,5 +1,7 @@
 # Event Countdown with Nixies and RFID
 
+![Project Image](https://www.detourner.fr/objects/cde_001.jpg)
+
 This project is an ESP32-based event countdown system that uses Nixie tubes to display the number of days remaining until an event. Each event is represented by an RFID card (tag) that can be placed on the device to trigger the countdown display.
 
 For more information about this object, visit: [https://www.detourner.fr/objects/01-le-temps-qui-reste/](https://www.detourner.fr/objects/01-le-temps-qui-reste/)
